@@ -1,0 +1,6 @@
+Placeholder for Discount Badge collectible sprite.
+Description: Static red/blue badge with "SALE" or "%".
+Dimensions: Approx 20x20 or 28x28 pixels.
+Format: PNG, transparent background. Static (no animation).
+Source: Needs to be created or found.
+Example Search Terms: "pixel art badge sprite", "16-bit sale icon"

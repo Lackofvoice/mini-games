@@ -1,0 +1,9 @@
+Placeholder for Jay the RV Guy sprite sheet.
+Dimensions: Individual frames around 32x32 or 48x48 pixels.
+Animations:
+- Idle (2-3 frames)
+- Run (4-6 frames)
+- Jump (2-3 frames: one for up, one for down/peak)
+Format: PNG sprite sheet, transparent background.
+Source: Needs to be created or found (e.g., from OpenGameArt, Itch.io, etc. - ensure license compatibility).
+Example Search Terms: "16-bit character sprite sheet free", "pixel art human sprite run jump idle"

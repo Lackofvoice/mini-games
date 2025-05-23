@@ -1,0 +1,7 @@
+Placeholder for Deal Token collectible sprite.
+Description: Shiny gold coin with a '$' or a star.
+Dimensions: Approx 16x16 or 24x24 pixels.
+Animation: Simple 2-4 frame animation (e.g., spinning or shining).
+Format: PNG, transparent background.
+Source: Needs to be created or found.
+Example Search Terms: "pixel art coin sprite", "16-bit gold coin animation"

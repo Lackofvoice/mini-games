@@ -1,0 +1,6 @@
+Placeholder for Jump SFX.
+Description: Short, springy/boing sound.
+Format: WAV or MP3.
+Duration: < 1 second.
+Source: Needs to be created or found.
+Example Search Terms: "jump sound effect free", "boing sfx wav"

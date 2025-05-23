@@ -1,0 +1,6 @@
+Placeholder for Game Win/Coupon Reveal SFX.
+Description: Short, positive jingle or fanfare.
+Format: WAV or MP3.
+Duration: 2-3 seconds.
+Source: Needs to be created or found.
+Example Search Terms: "game win jingle sfx free", "positive fanfare sound effect mp3"

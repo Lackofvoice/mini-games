@@ -1,0 +1,6 @@
+Placeholder for Collect Deal Token SFX.
+Description: Positive ding, cha-ching, or bleep sound.
+Format: WAV or MP3.
+Duration: < 1 second.
+Source: Needs to be created or found.
+Example Search Terms: "collect item sfx free", "cha-ching sound effect wav", "positive bleep sfx"

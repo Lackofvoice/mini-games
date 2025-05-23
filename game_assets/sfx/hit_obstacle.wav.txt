@@ -1,0 +1,6 @@
+Placeholder for Hit Obstacle SFX.
+Description: Short, negative thud, bonk, or error buzz.
+Format: WAV or MP3.
+Duration: < 1 second.
+Source: Needs to be created or found.
+Example Search Terms: "hit obstacle sfx free", "bonk sound effect wav", "error buzz sfx"

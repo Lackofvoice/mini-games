@@ -1,0 +1,8 @@
+Placeholder for UI Buttons Sprite Sheet.
+Description: Pixel art buttons for "Start," "Pause," "Play Again".
+Dimensions: Approx 80x30 pixels each.
+Style: 16-bit, rectangular or rounded. Could have different states (normal, pressed).
+Format: PNG, transparent background.
+Content: Three distinct buttons, possibly on a single sheet.
+Source: Needs to be created or found.
+Example Search Terms: "pixel art button set", "16-bit ui buttons"

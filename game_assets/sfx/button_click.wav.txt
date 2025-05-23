@@ -1,0 +1,6 @@
+Placeholder for Button Click SFX.
+Description: Generic satisfying click sound.
+Format: WAV or MP3.
+Duration: < 0.5 seconds.
+Source: Needs to be created or found.
+Example Search Terms: "button click sfx free", "ui click sound effect wav"

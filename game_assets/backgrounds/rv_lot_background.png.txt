@@ -1,0 +1,8 @@
+Placeholder for RV Lot Background.
+Description: Side-scrolling RV lot scene.
+Dimensions: Minimum width 1200 pixels, height around 800 pixels (or matching game height).
+Style: 16-bit pixel art, less detailed than foreground. Should be tileable or loop seamlessly.
+Content: Include simple RV silhouettes/shapes and perhaps a hint of a dealership building.
+Format: PNG.
+Source: Needs to be created or found.
+Example Search Terms: "pixel art background side scrolling", "16-bit game background seamless loop"

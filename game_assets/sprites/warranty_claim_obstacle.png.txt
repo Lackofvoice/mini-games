@@ -1,0 +1,6 @@
+Placeholder for Warranty Claim obstacle sprite.
+Description: Stack of papers, possibly with a red stamp or exclamation mark.
+Dimensions: Approx 24x24 pixels.
+Format: PNG, transparent background. Static.
+Source: Needs to be created or found.
+Example Search Terms: "pixel art paper stack sprite", "16-bit document icon"

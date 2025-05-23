@@ -1,0 +1,6 @@
+Placeholder for Road Cone obstacle sprite.
+Description: Orange and white striped traffic cone.
+Dimensions: Approx 16x24 pixels.
+Format: PNG, transparent background. Static.
+Source: Needs to be created or found.
+Example Search Terms: "pixel art road cone sprite", "16-bit traffic cone icon"
