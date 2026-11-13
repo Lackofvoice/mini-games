@@ -10,6 +10,15 @@ const JUMP_SPEED = 510;
 const MOVE_SPEED = 210;
 const LOT_SPEED = 235;
 const SPAWN_MS = 1250;
+const COFFEE_MS = 5000;
+const COFFEE_SPEED_MULTIPLIER = 1.35;
+const COFFEE_OBSTACLE_GAP = 6250;
+const SPAWN_PATTERN = [
+    'marshmallow', 'mile-marker', 'cone', 'marshmallow', 'coffee',
+    'robot', 'mile-marker', 'marshmallow', 'cone', 'mile-marker',
+    'spare_tire', 'robot', 'marshmallow', 'mile-marker', 'cone', 'marshmallow'
+];
+const OBSTACLES = new Set(['cone', 'robot']);
 const STORE_URLS = {
     dewitt: 'https://www.pricerightrv.com/location/dewitt',
     sterlingHeights: 'https://www.pricerightrv.com/location/sterling-heights'
@@ -48,15 +57,38 @@ function makeTextures(scene) {
         graphics.generateTexture(key, width, height);
     }
 
-    for (const [key, color] of [['token-gold', 0xffd17a], ['token-blue', 0x8de5fc]]) {
-        texture(key, 32, 32, () => {
-            rect(0x19232c, 0, 4, 32, 24);
-            rect(0x19232c, 4, 0, 24, 32);
-            rect(color, 4, 8, 24, 16);
-            rect(color, 8, 4, 16, 24);
-            rect(0xf6f0df, 12, 12, 8, 8);
+    function pickup(key, fill, draw) {
+        texture(key, 44, 44, () => {
+            rect(0x19232c, 0, 8, 44, 28);
+            rect(0x19232c, 8, 0, 28, 44);
+            rect(fill, 4, 12, 36, 20);
+            rect(fill, 12, 4, 20, 36);
+            draw();
         });
     }
+    pickup('marshmallow', 0x65dca7, () => {
+        rect(0x684d38, 24, 24, 4, 12);
+        rect(0xfff6df, 12, 12, 20, 16);
+        rect(0xe2ad79, 16, 24, 16, 4);
+    });
+    pickup('mile-marker', 0x8de5fc, () => {
+        rect(0x245360, 20, 24, 4, 12);
+        rect(0x245360, 12, 12, 20, 16);
+        rect(0xf6f0df, 16, 16, 12, 4);
+        rect(0xf6f0df, 20, 20, 4, 4);
+    });
+    pickup('coffee', 0xffd17a, () => {
+        rect(0x80513f, 28, 16, 8, 12);
+        rect(0xf6f0df, 12, 12, 20, 20);
+        rect(0x80513f, 16, 16, 12, 12);
+        rect(0xf6f0df, 16, 32, 12, 4);
+    });
+    pickup('spare_tire', 0xcbabff, () => {
+        rect(0x232b3a, 12, 8, 20, 28);
+        rect(0x232b3a, 8, 12, 28, 20);
+        rect(0xf6f0df, 16, 16, 12, 12);
+        rect(0x6752a0, 20, 20, 4, 4);
+    });
     texture('cone', 48, 44, () => {
         rect(0x19232c, 0, 36, 48, 8);
         rect(0xf58343, 8, 28, 32, 8);
@@ -66,11 +98,11 @@ function makeTextures(scene) {
     });
     texture('robot', 48, 44, () => {
         rect(0x19232c, 4, 8, 40, 36);
-        rect(0xa58aff, 8, 12, 32, 24);
+        rect(0xd54c45, 8, 12, 32, 24);
         rect(0x19232c, 12, 20, 24, 8);
-        rect(0x8de5fc, 16, 20, 4, 4);
-        rect(0x8de5fc, 28, 20, 4, 4);
-        rect(0xa58aff, 20, 0, 8, 8);
+        rect(0xffd17a, 16, 20, 4, 4);
+        rect(0xffd17a, 28, 20, 4, 4);
+        rect(0xd54c45, 20, 0, 8, 8);
     });
     texture('sky', WIDTH, HEIGHT, () => {
         rect(0x31566b, 0, 0, WIDTH, HEIGHT);
@@ -178,11 +210,20 @@ function boot() {
             this.player = this.physics.add.sprite(104, GROUND - 32, 'taggy-idle-right', 0)
                 .setScale(0.5).setCollideWorldBounds(true).setDepth(2);
             this.player.body.setSize(72, 120).setOffset(44, 16);
+            this.muted = true;
+            this.coffeeUntil = 0;
+            this.shield = false;
+            this.lastObstacle = -Infinity;
+            this.feedbackUntil = 0;
+            this.popup = this.add.text(0, 0, '', {
+                fontFamily: 'monospace', fontSize: '26px', fontStyle: 'bold',
+                color: '#fff6df', stroke: '#19232c', strokeThickness: 5
+            }).setOrigin(0.5).setDepth(3).setVisible(false);
             this.tokens = this.physics.add.group({ allowGravity: false, maxSize: 8 });
             this.obstacles = this.physics.add.group({ allowGravity: false, maxSize: 8 });
             this.physics.add.collider(this.player, floor);
-            this.physics.add.overlap(this.player, this.tokens, (_, token) => this.contact(token, 10));
-            this.physics.add.overlap(this.player, this.obstacles, (_, obstacle) => this.contact(obstacle, -5));
+            this.physics.add.overlap(this.player, this.tokens, (_, token) => this.collectPickup(token));
+            this.physics.add.overlap(this.player, this.obstacles, (_, obstacle) => this.hitObstacle(obstacle));
             this.physics.pause();
             this.bindControls();
             this.renderState();
@@ -198,6 +239,26 @@ function boot() {
                 target.addEventListener(event, handler, { signal: listeners.signal });
             };
             this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => listeners.abort());
+            byId('sound').disabled = false;
+            on(byId('sound'), 'click', async () => {
+                this.muted = !this.muted;
+                const button = byId('sound');
+                button.setAttribute('aria-pressed', String(!this.muted));
+                button.textContent = this.muted ? 'Sound off' : 'Sound on';
+                if (this.muted) return;
+                try {
+                    const Audio = window.AudioContext || window.webkitAudioContext;
+                    this.audio ??= new Audio();
+                    await this.audio.resume();
+                } catch {
+                    this.muted = true;
+                    button.setAttribute('aria-pressed', 'false');
+                    button.textContent = 'Sound unavailable';
+                }
+            });
+            this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+                this.audio?.close().catch(() => {});
+            });
             on(byId('start'), 'click', () => this.start());
             on(byId('replay'), 'click', () => this.start());
             on(byId('pause'), 'click', () => {
@@ -271,6 +332,11 @@ function boot() {
             this.nextSpawn = SPAWN_MS;
             this.spawnIndex = 0;
             this.scroll = 0;
+            this.coffeeUntil = 0;
+            this.shield = false;
+            this.lastObstacle = -Infinity;
+            this.feedbackUntil = 0;
+            this.popup.setVisible(false);
             this.drawScenery();
             this.tokens.clear(true, true);
             this.obstacles.clear(true, true);
@@ -322,6 +388,12 @@ function boot() {
             byId('score').textContent = this.score;
             const seconds = Math.ceil((ROUND_MS - this.elapsed) / 1000);
             if (byId('time').textContent !== String(seconds)) byId('time').textContent = seconds;
+            const remaining = Math.max(0, Math.ceil((this.coffeeUntil - this.elapsed) / 1000));
+            const effects = [remaining && 'Coffee ' + remaining + 's', this.shield && 'Spare tire ready']
+                .filter(Boolean).join(' · ');
+            const indicator = byId('effects');
+            if (indicator.textContent !== effects) indicator.textContent = effects;
+            indicator.hidden = !effects || this.state === STATES.GAME_OVER;
         }
 
         update(_, delta) {
@@ -342,7 +414,9 @@ function boot() {
             const right = this.keys.has('ArrowRight') || this.keys.has('right') || touch.includes('right');
             const direction = Number(right) - Number(left);
             if (direction) this.facing = direction < 0 ? 'left' : 'right';
-            this.player.setVelocityX(direction * MOVE_SPEED);
+            const boost = this.elapsed < this.coffeeUntil ? COFFEE_SPEED_MULTIPLIER : 1;
+            this.player.setVelocityX(direction * MOVE_SPEED * boost);
+            if (this.elapsed >= this.feedbackUntil) this.popup.setVisible(false);
             const grounded = this.player.body.blocked.down && this.player.body.velocity.y >= 0;
             this.drawTaggy(grounded ? (this.reducedMotion.matches ? 'idle' : 'run') : 'jump');
             for (const group of [this.tokens, this.obstacles]) {
@@ -378,23 +452,77 @@ function boot() {
         }
 
         spawn() {
-            const slot = this.spawnIndex++ % 6;
-            const isObstacle = slot === 2 || slot === 5;
+            const key = SPAWN_PATTERN[this.spawnIndex++ % SPAWN_PATTERN.length];
+            const isObstacle = OBSTACLES.has(key);
+            if (isObstacle && this.elapsed < this.coffeeUntil
+                && this.elapsed - this.lastObstacle < COFFEE_OBSTACLE_GAP) return;
             const group = isObstacle ? this.obstacles : this.tokens;
-            const key = ['token-gold', 'token-blue', 'cone', 'token-gold', 'token-blue', 'robot'][slot];
-            const y = GROUND - (isObstacle ? 22 : slot === 4 ? 117 : 32);
+            const y = GROUND - (isObstacle ? 22 : 32);
             const item = group.getFirstDead(true, WIDTH + 32, y, key);
             if (!item) return;
-            item.setTexture(key).enableBody(true, WIDTH + 32, y, true, true);
-            if (isObstacle) item.body.setSize(32, 36).setOffset(8, 8);
+            item.setTexture(key).enableBody(true, WIDTH + 32, y, true, true).setDepth(1);
+            if (isObstacle) {
+                item.body.setSize(32, 36).setOffset(8, 8);
+                this.lastObstacle = this.elapsed;
+            }
             item.setVelocityX(-LOT_SPEED);
         }
 
-        contact(item, points) {
+        collectPickup(item) {
+            if (this.state !== STATES.PLAYING || !item.active) return;
+            const key = item.texture.key;
+            item.disableBody(true, true);
+            if (key === 'coffee') {
+                this.coffeeUntil = this.elapsed + COFFEE_MS;
+                this.showFeedback('Coffee boost');
+            } else if (key === 'spare_tire') {
+                this.shield = true;
+                this.showFeedback('Spare tire ready');
+            } else {
+                this.score += 10;
+                this.showFeedback('+10');
+            }
+            const type = key === 'coffee' || key === 'spare_tire' ? key : 'score';
+            this.playPickupSound(type);
+            track('pickup_collect', { type });
+            this.updateStats();
+        }
+
+        hitObstacle(item) {
             if (this.state !== STATES.PLAYING || !item.active) return;
             item.disableBody(true, true);
-            this.score = Math.max(0, this.score + points);
+            if (this.shield) {
+                this.shield = false;
+                this.showFeedback('Shield used');
+            } else {
+                const penalty = Math.min(5, this.score);
+                this.score -= penalty;
+                this.showFeedback(penalty ? '-' + penalty : 'Hit');
+            }
             this.updateStats();
+        }
+
+        showFeedback(label) {
+            this.popup.setText(label)
+                .setPosition(Phaser.Math.Clamp(this.player.x, 110, WIDTH - 110), this.player.y - 54)
+                .setVisible(true);
+            this.feedbackUntil = this.elapsed + 900;
+        }
+
+        playPickupSound(type) {
+            if (this.muted || this.audio?.state !== 'running') return;
+            const notes = { score: [620, 830], coffee: [420, 630, 940], spare_tire: [330, 440, 550] };
+            notes[type].forEach((frequency, index) => {
+                const start = this.audio.currentTime + index * 0.08;
+                const tone = this.audio.createOscillator();
+                const gain = this.audio.createGain();
+                tone.frequency.value = frequency;
+                gain.gain.setValueAtTime(0.08, start);
+                gain.gain.exponentialRampToValueAtTime(0.001, start + 0.1);
+                tone.connect(gain).connect(this.audio.destination);
+                tone.start(start);
+                tone.stop(start + 0.1);
+            });
         }
 
         finish() {
@@ -402,6 +530,7 @@ function boot() {
             byId('final-score').textContent = 'Final score: ' + this.score;
             byId('outcome').textContent = won ? 'You reached the target!' : 'You fell short of 50 points. Give it another run!';
             this.setRoundState(STATES.GAME_OVER);
+            byId('effects').hidden = true;
             byId('result-title').focus();
             track('game_complete', { result: won ? 'win' : 'lose', score: this.score, duration_seconds: ROUND_MS / 1000 });
         }

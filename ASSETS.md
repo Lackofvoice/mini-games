@@ -28,3 +28,7 @@ Original paths below are relative to D:/GAMES/RV-Dealership-Simulation/ASSETS/sp
 | props/prop_fence_segment.png | prop_fence_segment | Lot boundary behind the RVs |
 
 makeTextures generates the sky, hills, track, pickups and hazards. The track scrolls at gameplay speed, RVs and fences at 36%, trees at 18%, and the sky at 8%. Reduced motion holds scenery in place.
+
+## Generated track items
+
+Marshmallow and mile-marker score pickups use mint and cyan octagons. Coffee and spare tire use amber and violet octagons. All pickups are 44 × 44. Cone and toy robot obstacles use angular orange and red silhouettes at 48 × 44. The items are drawn with Phaser Graphics in makeTextures.

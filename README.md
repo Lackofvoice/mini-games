@@ -1,6 +1,6 @@
 # RV Dash
 
-RV Dash is a short Price Right RV arcade runner. Guide Taggy through the lot, collect tokens and dodge obstacles. Reach 50 points by the end of a 60-second round. Every result offers a reversible choice of DeWitt or Sterling Heights before opening the selected store’s inventory page.
+RV Dash is a short Price Right RV arcade runner. Guide Taggy through the lot, collect marshmallows and mile markers, and jump over cones and robots. Reach 50 points by the end of a 60-second round. Every result offers a reversible choice of DeWitt or Sterling Heights before opening the selected store’s inventory page.
 
 ## Run locally
 
@@ -23,12 +23,12 @@ The game targets current browsers with Phaser support and Pointer Events. Edge i
 
 Source was Lackofvoice/mini-games at 70fd287fc72d7b6e54f64d3a2447442ad8bfacdd. The original asset placeholders are retained for provenance.
 
-Gameplay constants are at the top of game.js. The 600 × 800 playfield uses one ground line at y=644. Items spawn every 1.25 seconds in a repeating pattern and travel at 235 logical pixels per second. Tokens award 10 points and obstacles deduct up to 5. STORE_URLS maps each store identifier to its approved Price Right RV location page.
+Gameplay constants are at the top of game.js. The 600 × 800 playfield uses one ground line at y=644. Items spawn every 1.25 seconds in a repeating pattern and travel at 235 logical pixels per second. Marshmallows and mile markers award 10 points. Coffee gives 35% faster movement and suppresses close obstacle spawns for five active seconds. A spare tire absorbs one obstacle hit. Other hits deduct up to 5 points. STORE_URLS maps each store identifier to its approved Price Right RV location page.
 
 ## Analytics and sound
 
-The helper sends game_view once per page and game_start and game_complete once per round. Completion includes result, score and active duration. A changed choice emits store_selected. Inventory-link activation emits cta_click. Both store events include the selected store identifier. Every event includes game_name. The helper uses a pre-existing gtag function first, then a pre-existing dataLayer array. Play and navigation work without either integration. The game runs silently.
+The helper sends game_view once per page and game_start and game_complete once per round. Completion includes result, score and active duration. A changed choice emits store_selected. Inventory-link activation emits cta_click. Both store events include the selected store identifier. Every event includes game_name. The helper uses a pre-existing gtag function first, then a pre-existing dataLayer array. Play and navigation work without either integration. The pickup_collect event adds only the pickup type (score, coffee or spare_tire) to the common game name. Sound is muted by default. Enable it with Sound on/off to hear distinct synthesized pickup cues.
 
 ## CDN and embedding
 
-The page loads Phaser 3.80.1 from jsDelivr. An offline browser may start from its cache. An uncached dependency requires network access, and a failed load displays a retry message. The proposed embedding is a self-contained page in a dedicated games section. This work performed no deployment or website integration. Taggy is placeholder art pending the approved sprite sheet.
+The page loads Phaser 3.80.1 from jsDelivr. An offline browser may start from its cache. An uncached dependency requires network access, and a failed load displays a retry message. The proposed embedding is a self-contained page in a dedicated games section. This work performed no deployment or website integration. Taggy uses the approved left and right sprite sheets. Sim Lab scenery provenance is in ASSETS.md.

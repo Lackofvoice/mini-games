@@ -30,6 +30,7 @@
     #result { background: #203741; padding: 16px; border: 2px solid #647d87; }
     #result h2, #result h3 { margin: 0 0 8px; }
     .result-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    #effects { color: #ffd17a; font-weight: 700; }
     #status:empty { display: none; }
     @media (orientation: landscape) and (max-height: 520px) {
       #game-area { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px; }
@@ -41,13 +42,16 @@
   <main>
     <div class="brand">Price Right RV</div>
     <h1>RV Dash</h1>
-    <p id="instructions">Collect tokens and jump over obstacles. Reach 50 points in 60 seconds.</p>
+    <p id="instructions">Collect marshmallows and mile markers for points. Reach 50 in 60 seconds.</p>
     <p id="keyboard-help">Use arrow keys to move and Up or Space to jump. You can also tap the playfield to jump.</p>
+    <p>Coffee boosts movement for 5 seconds. A spare tire blocks one hit. Jump over cones and robots.</p>
     <div class="bar">
       <div class="stats"><span>Score <strong id="score">0</strong></span><span>Time <strong id="time">60</strong>s</span></div>
       <button id="start" class="primary" disabled>Start game</button>
       <button id="pause" hidden>Pause</button>
+      <button id="sound" aria-pressed="false" disabled>Sound off</button>
     </div>
+    <p id="effects" hidden></p>
     <p id="status" role="status">Loading game…</p>
     <div id="game-area">
       <div id="playfield" role="img" aria-label="RV lot with Taggy, the runner"></div>
