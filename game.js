@@ -48,25 +48,6 @@ function makeTextures(scene) {
         graphics.generateTexture(key, width, height);
     }
 
-    // Replace this block and its frame map when the approved Taggy sheet is available.
-    const poses = [[0, 0, 0], [0, 0, 4], [-4, 4, 0], [4, -4, 0], [4, -4, 4]];
-    poses.forEach(([left, right, rise], index) => {
-        texture('taggy-' + index, 56, 64, () => {
-            rect(0x19232c, 4, 8 - rise, 40, 40);
-            rect(0x19232c, 44, 16 - rise, 8, 24);
-            rect(0xda393f, 8, 12 - rise, 36, 32);
-            rect(0xda393f, 44, 20 - rise, 4, 16);
-            rect(0xff6e65, 12, 12 - rise, 28, 4);
-            rect(0xf6f0df, 40, 24 - rise, 4, 4);
-            rect(0x19232c, 16, 24 - rise, 4, 8);
-            rect(0x19232c, 28, 24 - rise, 4, 8);
-            rect(0x19232c, 20, 36 - rise, 8, 4);
-            rect(0x19232c, 12 + left, 44 - rise, 8, 12);
-            rect(0x19232c, 32 + right, 44 - rise, 8, 12);
-            rect(0xf6f0df, 12 + left, 56 - rise, 12, 8);
-            rect(0xf6f0df, 32 + right, 56 - rise, 12, 8);
-        });
-    });
     for (const [key, color] of [['token-gold', 0xffd17a], ['token-blue', 0x8de5fc]]) {
         texture(key, 32, 32, () => {
             rect(0x19232c, 0, 4, 32, 24);
@@ -91,37 +72,54 @@ function makeTextures(scene) {
         rect(0x8de5fc, 28, 20, 4, 4);
         rect(0xa58aff, 20, 0, 8, 8);
     });
-    texture('lot', 600, HEIGHT, () => {
-        rect(0x294956, 0, 0, WIDTH, HEIGHT);
-        rect(0xffd17a, 420, 100, 76, 76);
-        rect(0x355c65, 0, 300, WIDTH, 208);
-        rect(0x41636a, 0, 508, WIDTH, GROUND - 508);
-        for (const x of [28, 300]) {
-            rect(0x19232c, x, 456, 192, 104);
-            rect(0xe2dbca, x + 4, 460, 184, 88);
-            rect(0x8fabb4, x + 16, 472, 52, 28);
-            rect(0x8fabb4, x + 112, 472, 60, 28);
-            rect(0x9e5952, x + 4, 516, 184, 8);
-            rect(0x294956, x + 76, 472, 28, 72);
-            rect(0x19232c, x + 28, 544, 32, 28);
-            rect(0x19232c, x + 140, 544, 32, 28);
+    texture('sky', WIDTH, HEIGHT, () => {
+        rect(0x31566b, 0, 0, WIDTH, HEIGHT);
+        rect(0x4e7e8f, 0, 244, WIDTH, 260);
+        rect(0x75a6aa, 0, 368, WIDTH, 176);
+        rect(0xffd17a, 424, 106, 68, 68);
+        for (const [x, y] of [[24, 164], [242, 108], [476, 225]]) {
+            rect(0xbad8d6, x, y, 112, 12);
+            rect(0xbad8d6, x + 24, y - 12, 60, 12);
         }
-        rect(0x718691, 0, GROUND, WIDTH, 8);
-        rect(0x263640, 0, GROUND + 8, WIDTH, HEIGHT - GROUND - 8);
-        for (const x of [0, 200, 400]) rect(0xffd17a, x, GROUND + 72, 96, 8);
+        for (const [x, y] of [[0, 420], [76, 388], [156, 432], [292, 404], [440, 420]]) {
+            rect(0x567d83, x, y, 160, 112);
+            rect(0x567d83, x + 28, y - 16, 96, 16);
+        }
+        rect(0x345862, 0, 516, WIDTH, GROUND - 516);
+    });
+    texture('track', WIDTH, HEIGHT - GROUND + 24, () => {
+        rect(0x58686f, 0, 0, WIDTH, 24);
+        rect(0xe3bf79, 0, 24, WIDTH, 5);
+        rect(0x263640, 0, 29, WIDTH, HEIGHT - GROUND - 5);
+        for (const x of [0, 200, 400]) {
+            rect(0xc5ac78, x, 104, 96, 6);
+            rect(0x334750, x + 20, 66, 44, 2);
+            rect(0x334750, x + 128, 134, 24, 2);
+        }
     });
     graphics.destroy();
+}
 
-    for (const [key, frames, rate] of [
-        ['idle', [0, 1], 2], ['run', [2, 0, 3, 0], 9], ['jump', [4], 1]
-    ]) {
-        if (!scene.anims.exists(key)) {
-            scene.anims.create({
-                key, frames: frames.map((index) => ({ key: 'taggy-' + index })),
-                frameRate: rate, repeat: key === 'jump' ? 0 : -1
-            });
-        }
-    }
+const SCENERY = [
+    ['prop_tree_pine', 12, 547, 104, 148, 0x83b4a6, 0.18],
+    ['prop_tree_pine', 338, 548, 90, 128, 0x83b4a6, 0.18],
+    ['prop_fence_segment', 85, 592, 156, 64, 0xa2b9ad, 0.36],
+    ['prop_fence_segment', 400, 592, 156, 64, 0xa2b9ad, 0.36],
+    ['lite_tt_v2', 168, 610, 218, 132, 0xe5efed, 0.36],
+    ['generic_bunkhouse_fifth_wheel_teal', 478, 610, 248, 146, 0xe5efed, 0.36]
+];
+
+function makeScenery(scene) {
+    return SCENERY.flatMap(([key, x, y, maxWidth, maxHeight, tint, speed]) => {
+        if (!scene.textures.exists(key)) return [];
+        const frame = scene.textures.getFrame(key);
+        const scale = Math.min(maxWidth / frame.width, maxHeight / frame.height);
+        return [-1, 0, 1].map((copy) => ({
+            image: scene.add.image(x + copy * WIDTH, y, key).setOrigin(0.5, 1).setScale(scale).setTint(tint),
+            x: x + copy * WIDTH,
+            speed
+        }));
+    });
 }
 
 function boot() {
@@ -131,6 +129,19 @@ function boot() {
     }
 
     class DashScene extends Phaser.Scene {
+        preload() {
+            for (const [side, suffix] of [['right', ''], ['left', '_l']]) {
+                for (const pose of ['idle', 'walk']) {
+                    this.load.spritesheet('taggy-' + pose + '-' + side,
+                        'game_assets/taggy/taggy_' + pose + suffix + '.png',
+                        { frameWidth: 160, frameHeight: 144 });
+                }
+            }
+            for (const key of new Set(SCENERY.map(([name]) => name))) {
+                this.load.image(key, 'game_assets/simlab/' + key + '.png');
+            }
+        }
+
         create() {
             this.state = STATES.AWAITING_START;
             this.score = 0;
@@ -142,13 +153,31 @@ function boot() {
             this.keys = new Set();
             this.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
             makeTextures(this);
-            this.lot = this.add.tileSprite(0, 0, WIDTH, HEIGHT, 'lot').setOrigin(0);
+            if (['idle-right', 'walk-right', 'idle-left', 'walk-left']
+                .some((pose) => !this.textures.exists('taggy-' + pose))) {
+                byId('status').textContent = 'Taggy could not load. Refresh to try again.';
+                return;
+            }
+            this.lot = this.add.tileSprite(0, 0, WIDTH, HEIGHT, 'sky').setOrigin(0);
+            this.scenery = makeScenery(this);
+            this.road = this.add.tileSprite(0, GROUND - 24, WIDTH, HEIGHT - GROUND + 24, 'track').setOrigin(0);
+            this.scroll = 0;
+            for (const side of ['left', 'right']) {
+                const key = 'run-' + side;
+                if (!this.anims.exists(key)) this.anims.create({
+                    key,
+                    frames: this.anims.generateFrameNumbers('taggy-walk-' + side, { start: 0, end: 3 }),
+                    duration: 560,
+                    repeat: -1
+                });
+            }
             const floor = this.add.zone(WIDTH / 2, GROUND + 16, WIDTH, 32);
             this.physics.add.existing(floor, true);
             this.physics.world.setBounds(0, 0, WIDTH, HEIGHT, true, true, true, false);
-            this.player = this.physics.add.sprite(104, GROUND - 32, 'taggy-0')
-                .setCollideWorldBounds(true);
-            this.player.body.setSize(36, 60).setOffset(10, 4);
+            this.facing = 'right';
+            this.player = this.physics.add.sprite(104, GROUND - 32, 'taggy-idle-right', 0)
+                .setScale(0.5).setCollideWorldBounds(true).setDepth(2);
+            this.player.body.setSize(72, 120).setOffset(44, 16);
             this.tokens = this.physics.add.group({ allowGravity: false, maxSize: 8 });
             this.obstacles = this.physics.add.group({ allowGravity: false, maxSize: 8 });
             this.physics.add.collider(this.player, floor);
@@ -241,11 +270,13 @@ function boot() {
             this.elapsed = 0;
             this.nextSpawn = SPAWN_MS;
             this.spawnIndex = 0;
-            this.lot.tilePositionX = 0;
+            this.scroll = 0;
+            this.drawScenery();
             this.tokens.clear(true, true);
             this.obstacles.clear(true, true);
             this.player.body.reset(104, GROUND - 100);
-            this.player.play('idle');
+            this.facing = 'right';
+            this.drawTaggy('idle');
             this.selectStore(null);
             this.updateStats();
             this.setRoundState(STATES.PLAYING);
@@ -283,7 +314,8 @@ function boot() {
 
         jump() {
             if (this.state !== STATES.PLAYING || !this.player.body.blocked.down || this.player.body.velocity.y < 0) return;
-            this.player.setVelocityY(-JUMP_SPEED).play('jump', true);
+            this.player.setVelocityY(-JUMP_SPEED);
+            this.drawTaggy('jump');
         }
 
         updateStats() {
@@ -301,14 +333,18 @@ function boot() {
                 this.finish();
                 return;
             }
-            if (!this.reducedMotion.matches) this.lot.tilePositionX += LOT_SPEED * step / 1000;
+            if (!this.reducedMotion.matches) {
+                this.scroll += LOT_SPEED * step / 1000;
+                this.drawScenery();
+            }
             const touch = [...this.held.values()];
             const left = this.keys.has('ArrowLeft') || this.keys.has('left') || touch.includes('left');
             const right = this.keys.has('ArrowRight') || this.keys.has('right') || touch.includes('right');
-            this.player.setVelocityX((Number(right) - Number(left)) * MOVE_SPEED);
-            if (this.player.body.blocked.down && this.player.body.velocity.y >= 0) {
-                this.player.play(this.reducedMotion.matches ? 'idle' : 'run', true);
-            }
+            const direction = Number(right) - Number(left);
+            if (direction) this.facing = direction < 0 ? 'left' : 'right';
+            this.player.setVelocityX(direction * MOVE_SPEED);
+            const grounded = this.player.body.blocked.down && this.player.body.velocity.y >= 0;
+            this.drawTaggy(grounded ? (this.reducedMotion.matches ? 'idle' : 'run') : 'jump');
             for (const group of [this.tokens, this.obstacles]) {
                 for (const item of group.getChildren()) {
                     if (item.active && item.x < -32) item.disableBody(true, true);
@@ -317,6 +353,27 @@ function boot() {
             if (this.elapsed >= this.nextSpawn) {
                 this.spawn();
                 this.nextSpawn += SPAWN_MS;
+            }
+        }
+
+        drawScenery() {
+            this.lot.tilePositionX = this.scroll * 0.08;
+            this.road.tilePositionX = this.scroll;
+            for (const { image, x, speed } of this.scenery) {
+                image.x = x - (this.scroll * speed) % WIDTH;
+            }
+        }
+
+        drawTaggy(pose) {
+            if (pose === 'run') {
+                this.player.play('run-' + this.facing, true);
+                return;
+            }
+            const key = 'taggy-' + (pose === 'jump' ? 'walk' : 'idle') + '-' + this.facing;
+            const frame = pose === 'jump' ? 1 : 0;
+            if (this.player.texture.key !== key || this.player.frame.name !== frame || this.player.anims.isPlaying) {
+                this.player.anims.stop();
+                this.player.setTexture(key, frame);
             }
         }
 

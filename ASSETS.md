@@ -1,14 +1,30 @@
 # RV Dash art
 
-All game textures come from makeTextures in game.js. Phaser Graphics draws on a four-pixel grid and generates textures at startup. Pixel-art rendering and CSS nearest-neighbor scaling keep edges sharp. Responsive viewports can use fractional scale.
+## Taggy
 
-| Key | Logical pixels | Frames or role |
+The official PNGs were extracted on 2026-11-13 from the inline script on the [approved Price Right RV source page](https://www.pricerightrv.com/product/used-2019-forest-river-rv-surveyor-251rks-3815962-29?taggy=test). Files are in game_assets/taggy.
+
+| Variable | Filename | Geometry and use |
 | --- | --- | --- |
-| taggy-0 to taggy-4 | 56 × 64 | Neutral, raised idle, two run strides, jump |
-| token-gold, token-blue | 32 × 32 | Neutral collectibles |
-| cone, robot | 48 × 44 | Road cone and fictional toy robot |
-| lot | 600 × 800 | Repeating RV lot, road and lane markers |
+| IDLE | taggy_idle.png | 160 × 144, right idle |
+| WALK | taggy_walk.png | 640 × 144, four right-facing 160 × 144 frames |
+| IDLE_L | taggy_idle_l.png | 160 × 144, left idle |
+| WALK_L | taggy_walk_l.png | 640 × 144, four left-facing 160 × 144 frames |
+| KEYS | taggy_keys.png | 72 × 68, archived reference |
 
-Idle uses frames 0 and 1 at 2 fps. Run uses 2, 0, 3, 0 at 9 fps. Jump uses frame 4. Taggy uses red and coral with cream features and dark ink. The lot uses muted slate and teal. Gold, cyan, orange and violet distinguish moving objects. HTML and CSS provide HUD and controls.
+Run uses four frames at 140 ms per frame. Jump holds walk frame 1 for the current direction. The sheet frames display at 80 × 72 logical pixels, with visible art approximately 64 px high. Collision size is 36 × 60. Phaser pixel-art mode and CSS pixelated scaling use nearest-neighbor sampling.
 
-Taggy is procedural placeholder art. To use the approved sheet, load it in the scene preload and replace the marked Taggy generation block and animation frame map in makeTextures. Update the initial player sprite key to the approved sheet and preserve the 56 × 64 frame bounds or retune the body and floor alignment to match. The original text asset placeholders stay in source control.
+The keys are kept as an approved source asset and are never loaded during gameplay. A dealership game can make a key pickup look like winning a vehicle.
+
+## Sim Lab
+
+Original paths below are relative to D:/GAMES/RV-Dealership-Simulation/ASSETS/sprites. Copies under game_assets/simlab retain their filenames and were downscaled with nearest-neighbor to reduce the browser payload. The source folder was read-only.
+
+| Original path | Manifest key | Use |
+| --- | --- | --- |
+| rvs/lite_tt_v2.png | lite_tt_v2 | Travel trailer on the RV row |
+| rvs/generic_bunkhouse_fifth_wheel_teal.png | generic_bunkhouse_fifth_wheel_teal | Fifth wheel on the RV row |
+| props/prop_tree_pine.png | prop_tree_pine | Far tree layer |
+| props/prop_fence_segment.png | prop_fence_segment | Lot boundary behind the RVs |
+
+makeTextures generates the sky, hills, track, pickups and hazards. The track scrolls at gameplay speed, RVs and fences at 36%, trees at 18%, and the sky at 8%. Reduced motion holds scenery in place.
