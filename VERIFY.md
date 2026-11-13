@@ -88,3 +88,17 @@ Windows, headless Microsoft Edge 157, DevTools Protocol and the Phase 4 checkout
 | Scenery and brand | PASS | Inspected captures at 600 px canvas width and at 360 px viewport width. Trees and fences sit in one spaced band, with RVs in their own foreground band. Red primary buttons and accents, dark panels, white type, and the warm gray road and sky were visible at both sizes. |
 | Kept results and audio controls | PASS | Best score and level were stored. Both exact store URLs were selectable and remained gated until selection. Sound started muted and a real pointer activation opened a running WebAudio context. |
 | Physical-device play and audio by ear | NOT TESTED | Touch was emulated and audio was inspected programmatically. Full keyboard traversal and screen-reader operation remain open. |
+
+## Phase 5 verification
+
+Windows Edge 157 via DevTools Protocol. Tests used the actual checkout from file URLs and loopback HTTP.
+
+| Check | Result | Observed evidence |
+| --- | --- | --- |
+| Local file and hard reload | PASS | Edge opened the file URL, loaded embedded art and reached Start with both scripts at v=5. Cache-disabled reload also passed. |
+| Losing runs | PASS | Idle flight hit a floor fence at 6.17 active seconds. Keeping Space held hit the overhead sign. Horizontal input never moved Taggy. |
+| Maximum-speed passability | PASS | In the live Phaser scene, a scripted hold/release controller used the production advance method at 8 ms substeps for 60 simulated seconds at 230 logical px/s. It cleared the repeating fence, sign, stump, branch, cone and tire patterns without a crash and collected coins. It picked a reachable target height by lane and never teleported Taggy or removed hazards during the proof. |
+| Hitbox and coin scoring | PASS | The collision probe cleared an edge 8 logical px outside the inset boundary and crashed at the center. The first coin awarded 5 points, and the maximum-speed route ended with 735 bonus points. |
+| Restart and records | PASS | Space started another run after game over. Input during the 520 ms crash lock did not restart. Best score matched localStorage and survived reload. |
+| 360 px touch | PASS | Edge touch held and moved diagonally across the playfield. Taggy rose without horizontal motion. Release restored falling. Scroll position stayed at zero and visual viewport scale stayed at one. Reduced motion held decorative scenery. |
+| Physical phone and sound by ear | NOT TESTED | Touch was emulated. The existing synthesized audio path was retained. |

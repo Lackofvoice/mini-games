@@ -6,8 +6,8 @@
   <title>RV Dash</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@1,900&display=swap">
   <script defer src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
-  <script defer src="game_assets/embedded-assets.js?v=4"></script>
-  <script defer src="game.js?v=4"></script>
+  <script defer src="game_assets/embedded-assets.js?v=5"></script>
+  <script defer src="game.js?v=5"></script>
   <style>
     :root { --red: #dc2626; --black: #111111; --panel: #222222; --white: #ffffff; }
     * { box-sizing: border-box; }
@@ -45,6 +45,10 @@
       .bar button { padding-inline: 8px; font-size: .875rem; }
       .stats { gap: 8px; }
     }
+    #motion-note { display: none; font-size: .875rem; }
+    @media (prefers-reduced-motion: reduce) { #motion-note { display: block; } }
+    .in-flight { overscroll-behavior: none; }
+    .in-flight #game-area { touch-action: none; }
     #status:empty { display: none; }
     @media (orientation: landscape) and (max-height: 520px) {
       #game-area { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px; }
@@ -57,7 +61,8 @@
     <div class="brand">Price Right RV</div>
     <h1>RV Dash</h1>
     <div id="intro">
-      <p id="flight-help" title="Space or mouse to fly. Arrows or A and D to steer. On touch, hold and slide.">Hold to fly up. Let go to drop. Steer left or right.</p>
+      <p id="flight-help">Tap or hold to fly</p>
+      <p id="motion-note">Reduced motion: calmer scenery.</p>
       <ul id="legend" aria-label="Track items"></ul>
     </div>
     <div class="bar">
@@ -69,7 +74,7 @@
     <p id="effects" hidden></p>
     <p id="status" role="status">Loading game…</p>
     <div id="game-area">
-      <div id="playfield" tabindex="-1" role="group" aria-label="Taggy flight course. Space or mouse to fly. Left and Right arrows or A and D to steer. On touch, hold and slide.">
+      <div id="playfield" tabindex="-1" role="group" aria-label="Taggy flight course. Hold Space, mouse, or touch to rise. Release to fall.">
         <p id="speech" hidden></p>
       </div>
     </div>

@@ -3,35 +3,35 @@
 const WIDTH = 600;
 const HEIGHT = 800;
 const GROUND = 644;
-const MOVE_SPEED = 285;
 const GRAVITY = 690;
 const THRUST = 1370;
 const MAX_VERTICAL_SPEED = 330;
 const CEILING_Y = 36;
 const FLOOR_Y = GROUND - 32;
 const START_X = 150;
-const INTRO_GATES = 3;
-const CRASH_MS = 2000;
+const CRASH_MS = 520;
 const BRAND_RED = 0xdc2626;
-const IDLE_LINES = ['Nice day for a cruise.', 'Taking the scenic route.', 'Just doing my rounds.', 'Still with me?'];
+const IDLE_LINES = ['Nice day for a cruise.', 'Taking the scenic route.', 'Still with me?'];
 const COFFEE_MS = 5000;
-const COFFEE_SPEED_MULTIPLIER = 1.35;
-const GAPS_PER_LEVEL = 8;
-const GATE_WIDTH = 96;
-const PLAYER_HALF_WIDTH = 23;
-const PLAYER_HALF_HEIGHT = 27;
+const LEVEL_DISTANCE = 2400;
+const MIN_SPEED = 132;
+const MAX_SPEED = 230;
+const PLAYER_HALF_WIDTH = 21;
+const PLAYER_HALF_HEIGHT = 25;
 const BEST_KEY = 'rv-dash-best-v3';
-const CENTERS = [465, 448, 430, 410, 465, 385, 325, 445, 360, 466, 370, 455];
-const LOW_HAZARDS = ['cone', 'robot', 'hydrant', 'lite_tt_v2', 'generic_bunkhouse_fifth_wheel_teal'];
-const HIGH_HAZARDS = ['branch', 'banner', 'sign'];
+const COIN_POINTS = 5;
+// Spacing leaves time to travel floor-to-ceiling even at maximum speed.
+const PATTERNS = [
+    { key: 'fence', y: 604, width: 120, height: 76, lane: 'low', spacing: 590, coins: 'arc' },
+    { key: 'sign', y: 83, width: 102, height: 176, lane: 'high', spacing: 590, coins: 'line' },
+    { key: 'stump', y: 601, width: 90, height: 86, lane: 'low', spacing: 590, coins: 'line' },
+    { key: 'branch', y: 106, width: 158, height: 166, lane: 'high', spacing: 590, coins: 'arc' },
+    { key: 'cone', y: 605, width: 78, height: 78, lane: 'low', spacing: 590, coins: 'arc' },
+    { key: 'tire', y: 579, width: 98, height: 98, lane: 'low', spacing: 590, coins: 'line' }
+];
 
-function difficulty(level) {
-    const step = level - 1;
-    return {
-        speed: Math.min(350, 110 * 1.09 ** step),
-        opening: Math.max(176, 310 - step * 12),
-        spacing: Math.max(234, 380 - step * 10)
-    };
+function scrollSpeed(distance) {
+    return Math.min(MAX_SPEED, MIN_SPEED + distance / 90);
 }
 
 function readBest() {
@@ -92,19 +92,12 @@ function makeTextures(scene) {
         graphics.fillStyle(ink).fillCircle(x, y, radius);
         graphics.fillStyle(color).fillCircle(x, y, radius - 4);
     }
-    texture('marshmallow', 64, 64, () => {
-        box(cream, 9, 10, 46, 44, 13);
-        rect(0xe5b59d, 17, 42, 30, 5);
-        rect(0xffffff, 19, 18, 25, 4);
-    });
-    texture('mile-marker', 64, 64, () => {
-        box(0x85af99, 27, 35, 11, 23);
-        box(0x187449, 3, 9, 58, 33);
-        const letters = [['101','111','101','101','101'], ['111','010','010','010','111'],
-            ['100','100','100','100','111'], ['111','100','110','100','111']];
-        letters.forEach((letter, i) => letter.forEach((row, y) => [...row].forEach((pixel, x) => {
-            if (pixel === '1') rect(cream, 10 + i * 12 + x * 3, 18 + y * 3, 3, 3);
-        })));
+    texture('coin', 64, 64, () => {
+        circle(0xffefc2, 32, 32, 29);
+        circle(BRAND_RED, 32, 32, 23);
+        graphics.fillStyle(0xffffff).fillRoundedRect(18, 23, 22, 18, 3);
+        graphics.fillStyle(0xffffff).fillTriangle(39, 23, 48, 32, 39, 41);
+        graphics.fillStyle(BRAND_RED).fillCircle(39, 32, 2);
     });
     texture('coffee', 64, 64, () => {
         circle(0xdb9c68, 49, 35, 12);
@@ -114,11 +107,11 @@ function makeTextures(scene) {
             .moveTo(22, 19).lineTo(25, 12).lineTo(22, 5)
             .moveTo(34, 19).lineTo(38, 12).lineTo(35, 5).strokePath();
     });
-    texture('spare_tire', 64, 64, () => {
-        circle(0x344353, 32, 32, 26);
-        circle(0xadc2c7, 32, 32, 15);
-        circle(0x435363, 32, 32, 7);
-        for (const x of [17, 25, 33, 41]) rect(0x718494, x, 11, 4, 4);
+    texture('tire', 64, 64, () => {
+        circle(0x333337, 32, 32, 29);
+        circle(0xc2b8af, 32, 32, 17);
+        circle(0x454149, 32, 32, 8);
+        for (const x of [19, 28, 37]) rect(0x878086, x, 10, 5, 5);
     });
     texture('cone', 64, 64, () => {
         graphics.fillStyle(ink).fillTriangle(10, 50, 30, 5, 54, 50);
@@ -127,36 +120,35 @@ function makeTextures(scene) {
         rect(cream, 19, 40, 24, 5);
         box(BRAND_RED, 5, 47, 54, 12, 5);
     });
-    texture('robot', 64, 64, () => {
-        box(0x758b9d, 28, 5, 11, 18);
-        box(BRAND_RED, 6, 16, 52, 40);
-        graphics.fillStyle(0xa8a4a2).fillRoundedRect(10, 20, 44, 32, 4);
-        box(0x3a4b61, 11, 25, 42, 17);
-        circle(0xff4f5a, 23, 33, 7);
-        circle(0xff4f5a, 41, 33, 7);
-        rect(cream, 24, 45, 16, 3);
+    texture('fence', 120, 76, () => {
+        box(0x8c5d48, 2, 24, 116, 15);
+        box(0x8c5d48, 2, 48, 116, 15);
+        for (const x of [7, 30, 53, 76, 99]) {
+            box(0xbd8560, x, 3, 15, 72, 4);
+            rect(cream, x + 5, 22, 5, 4);
+        }
     });
-    texture('hydrant', 64, 64, () => {
-        box(0xe54e43, 9, 27, 46, 17);
-        box(0xf66543, 20, 16, 24, 38);
-        circle(0xffb375, 32, 19, 12);
-        box(0xc83739, 15, 47, 34, 12, 5);
+    texture('stump', 90, 86, () => {
+        graphics.fillStyle(ink).fillTriangle(1, 83, 38, 41, 89, 83);
+        graphics.fillStyle(0x85543e).fillTriangle(10, 79, 40, 47, 79, 79);
+        box(0x96634a, 15, 13, 60, 62, 13);
+        graphics.fillStyle(ink).fillEllipse(45, 20, 65, 35);
+        graphics.fillStyle(0xd79e72).fillEllipse(45, 20, 56, 27);
+        graphics.lineStyle(3, 0x9d6248).strokeEllipse(45, 20, 30, 14);
     });
-    texture('branch', 64, 64, () => {
-        box(0x805035, 12, 26, 43, 19);
-        circle(0x417955, 18, 25, 14);
-        circle(0x56956c, 33, 18, 15);
-        circle(0x397e60, 48, 24, 13);
+    texture('sign', 102, 176, () => {
+        box(0x827a77, 20, 0, 12, 113, 4);
+        box(0x827a77, 69, 0, 12, 113, 4);
+        box(BRAND_RED, 1, 100, 100, 74, 11);
+        graphics.fillStyle(cream).fillTriangle(30, 127, 72, 127, 51, 156);
+        rect(cream, 47, 114, 8, 18);
     });
-    texture('banner', 64, 64, () => {
-        box(0xcf4f41, 6, 14, 52, 38);
-        graphics.fillStyle(cream).fillTriangle(15, 21, 29, 21, 22, 43);
-        graphics.fillStyle(cream).fillTriangle(35, 21, 49, 21, 42, 43);
-    });
-    texture('sign', 64, 64, () => {
-        box(0xf7b951, 6, 10, 52, 45);
-        graphics.fillStyle(ink).fillTriangle(21, 34, 43, 34, 32, 45);
-        rect(ink, 29, 21, 6, 17);
+    texture('branch', 158, 166, () => {
+        graphics.lineStyle(21, ink).beginPath().moveTo(105, 0).lineTo(90, 72).lineTo(46, 131).strokePath();
+        graphics.lineStyle(13, 0x906147).beginPath().moveTo(105, 0).lineTo(90, 72).lineTo(46, 131).strokePath();
+        for (const [x, y, r] of [[35, 129, 27], [69, 136, 28], [110, 116, 34], [133, 86, 24]]) {
+            circle(0x637b4e, x, y, r);
+        }
     });
     texture('sky', WIDTH, HEIGHT, () => {
         for (let y = 0; y < HEIGHT; y += 4) {
@@ -247,8 +239,8 @@ function boot() {
             this.score = 0;
             this.elapsed = 0;
             this.store = null;
-            this.keys = new Set();
-            this.drag = null;
+            this.spaceHeld = false;
+            this.pointerId = null;
             this.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
             makeTextures(this);
             if (['idle-right', 'walk-right', 'idle-left', 'walk-left']
@@ -261,19 +253,16 @@ function boot() {
             this.clouds = this.add.tileSprite(0, 0, WIDTH, HEIGHT, 'clouds').setOrigin(0);
             this.scenery = makeScenery(this);
             this.road = this.add.tileSprite(0, GROUND - 24, WIDTH, HEIGHT - GROUND + 24, 'track').setOrigin(0).setDepth(2);
-            for (const side of ['left', 'right']) {
-                const key = 'run-' + side;
-                if (!this.anims.exists(key)) this.anims.create({
-                    key,
-                    frames: this.anims.generateFrameNumbers('taggy-walk-' + side, { start: 0, end: 3 }),
-                    duration: 560,
-                    repeat: -1
-                });
-            }
+            if (!this.anims.exists('run-right')) this.anims.create({
+                key: 'run-right',
+                frames: this.anims.generateFrameNumbers('taggy-walk-right', { start: 0, end: 3 }),
+                duration: 560,
+                repeat: -1
+            });
             this.player = this.add.sprite(START_X, FLOOR_Y, 'taggy-idle-right', 0).setScale(0.5).setDepth(5);
             this.muted = true;
             this.best = readBest();
-            this.gates = [];
+            this.segments = [];
             this.effects = [];
             this.banner = this.add.text(WIDTH / 2, 100, '', {
                 fontFamily: 'monospace', fontStyle: 'bold', fontSize: '52px',
@@ -324,28 +313,31 @@ function boot() {
                 if (document.hidden && this.state === STATES.PLAYING) this.setRoundState(STATES.PAUSED);
             });
             on(window, 'blur', () => this.clearInput());
-            const gameplayKeys = ['ArrowLeft', 'ArrowRight', 'KeyA', 'KeyD', 'Space'];
             on(document, 'keydown', (event) => {
-                if (this.state !== STATES.PLAYING || !gameplayKeys.includes(event.code)
-                    || event.ctrlKey || event.metaKey || event.altKey) return;
-                if (event.code === 'Space' && event.target.closest('button, a')) return;
+                if (event.code !== 'Space' || event.ctrlKey || event.metaKey || event.altKey
+                    || event.target.closest('button, a')) return;
+                if (this.state === STATES.PAUSED || this.loadFailures.size) return;
                 event.preventDefault();
-                this.keys.add(event.code);
+                if (event.repeat || this.crashUntil && this.state === STATES.PLAYING) return;
+                if (this.state !== STATES.PLAYING) this.start();
+                this.spaceHeld = true;
             });
-            on(document, 'keyup', (event) => this.keys.delete(event.code));
+            on(document, 'keyup', (event) => {
+                if (event.code === 'Space') this.spaceHeld = false;
+            });
             const field = byId('playfield');
             on(field, 'pointerdown', (event) => {
-                if (event.button !== 0 || this.drag || this.state !== STATES.PLAYING) return;
-                field.setPointerCapture(event.pointerId);
+                if (event.button !== 0 || this.pointerId !== null || this.crashUntil
+                    || this.state === STATES.PAUSED || this.loadFailures.size) return;
+                if (this.state === STATES.AWAITING_START) this.start();
+                if (this.state !== STATES.PLAYING) return;
                 field.focus({ preventScroll: true });
-                this.drag = { id: event.pointerId, touch: event.pointerType === 'touch', targetX: this.pointerX(event) };
-            });
-            on(field, 'pointermove', (event) => {
-                if (this.drag?.id === event.pointerId && this.drag.touch) this.drag.targetX = this.pointerX(event);
+                field.setPointerCapture(event.pointerId);
+                this.pointerId = event.pointerId;
             });
             for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) {
                 on(field, event, (pointer) => {
-                    if (this.drag?.id === pointer.pointerId) this.drag = null;
+                    if (this.pointerId === pointer.pointerId) this.pointerId = null;
                 });
             }
             for (const button of document.querySelectorAll('[data-store]')) {
@@ -362,10 +354,11 @@ function boot() {
         }
 
         makeLegend() {
+            byId('legend').replaceChildren();
             for (const [key, label] of [
-                ['coffee', 'Speed boost 5s'], ['spare_tire', 'Blocks 1 hit'],
-                ['marshmallow', 'Marshmallow +5'], ['mile-marker', 'Mile marker +10'],
-                ['cone', 'Cone ends run'], ['robot', 'Robot ends run']
+                ['coin', 'Tag coin +5'], ['coffee', 'Double points'],
+                ['fence', 'Jump fences'], ['sign', 'Duck signs'],
+                ['cone', 'Avoid cones'], ['tire', 'Avoid tires']
             ]) {
                 const item = document.createElement('li');
                 const icon = this.textures.get(key).getSourceImage();
@@ -377,35 +370,29 @@ function boot() {
             }
         }
 
-        pointerX(event) {
-            const rect = byId('playfield').getBoundingClientRect();
-            return Phaser.Math.Clamp((event.clientX - rect.left) * WIDTH / rect.width, 35, WIDTH - 35);
-        }
-
         clearInput() {
-            this.keys.clear();
+            this.spaceHeld = false;
             const field = byId('playfield');
-            if (this.drag && field.hasPointerCapture(this.drag.id)) field.releasePointerCapture(this.drag.id);
-            this.drag = null;
+            if (this.pointerId !== null && field.hasPointerCapture(this.pointerId)) field.releasePointerCapture(this.pointerId);
+            this.pointerId = null;
         }
 
         start() {
             if (this.state !== STATES.AWAITING_START && this.state !== STATES.GAME_OVER) return;
-            for (const gate of this.gates) this.destroyGate(gate);
+            for (const segment of this.segments) segment.view.destroy();
             for (const effect of this.effects) effect.object.destroy();
-            this.gates = [];
+            this.segments = [];
             this.effects = [];
             this.score = 0;
             this.level = 1;
-            this.passed = 0;
+            this.bonus = 0;
+            this.coinStreak = 0;
+            this.newBest = false;
             this.elapsed = 0;
             this.scroll = 0;
-            this.nextGate = 110;
-            this.gateIndex = 0;
+            this.nextPattern = 385;
+            this.patternIndex = 0;
             this.coffeeUntil = 0;
-            this.shield = false;
-            this.facing = 'right';
-            this.heading = 0;
             this.crashUntil = 0;
             this.flashUntil = 0;
             this.bannerUntil = 0;
@@ -413,7 +400,7 @@ function boot() {
             this.nextExhaust = 0;
             this.idleLine = 0;
             this.player.clearTint().setAngle(0).setPosition(START_X, FLOOR_Y);
-            this.drawTaggy(false);
+            this.drawTaggy();
             this.banner.setVisible(false);
             this.drawScenery();
             this.selectStore(null);
@@ -440,6 +427,7 @@ function boot() {
             byId('intro').hidden = !intro;
             byId('pause').hidden = this.state !== PLAYING && this.state !== PAUSED;
             byId('pause').textContent = this.state === PAUSED ? 'Resume' : 'Pause';
+            document.body.classList.toggle('in-flight', this.state === PLAYING);
             byId('status').textContent = this.state === PAUSED ? 'Run paused. Select Resume to continue.' : '';
             byId('result').hidden = this.state !== GAME_OVER;
             byId('game-area').hidden = this.state === GAME_OVER;
@@ -449,8 +437,7 @@ function boot() {
             byId('score').textContent = this.score;
             byId('level').textContent = this.level;
             const remaining = Math.max(0, Math.ceil((this.coffeeUntil - this.elapsed) / 1000));
-            const effects = [remaining && 'Coffee ' + remaining + 's · x2', this.shield && 'Spare tire ready']
-                .filter(Boolean).join(' · ');
+            const effects = remaining ? 'Coffee ' + remaining + 's � x2' : '';
             const indicator = byId('effects');
             if (indicator.textContent !== effects) indicator.textContent = effects;
             indicator.hidden = !effects || this.state === STATES.GAME_OVER;
@@ -458,7 +445,7 @@ function boot() {
 
         update(_, delta) {
             if (this.state !== STATES.PLAYING) return;
-            // Small substeps keep collision and gate crossings reliable on slow frames.
+            // Small substeps keep collision and pattern crossings reliable on slow frames.
             let remaining = Math.min(delta, 64);
             while (remaining > 0 && this.state === STATES.PLAYING) {
                 const step = Math.min(remaining, 8);
@@ -479,55 +466,48 @@ function boot() {
                 if (this.elapsed >= this.crashUntil) this.finish();
                 return;
             }
-            this.steer(dt);
-            const { speed, opening, spacing } = difficulty(this.level);
-            const distance = speed * dt;
+            this.fly(dt);
+            const distance = scrollSpeed(this.scroll) * dt;
             this.scroll += distance;
-            if (this.scroll >= this.nextGate) {
-                this.spawnGate(opening);
-                this.nextGate = this.scroll + spacing;
+            if (this.scroll >= this.nextPattern) {
+                const pattern = PATTERNS[this.patternIndex % PATTERNS.length];
+                this.spawnPattern(pattern, this.patternIndex++);
+                this.nextPattern += pattern.spacing;
             }
-            for (const gate of this.gates) {
-                gate.view.x -= distance;
-                this.checkGate(gate);
+            this.score = Math.floor(this.scroll / 20) + this.bonus;
+            const level = 1 + Math.floor(this.scroll / LEVEL_DISTANCE);
+            if (level > this.level) {
+                this.level = level;
+                this.banner.setText('LEVEL ' + level).setVisible(true);
+                this.bannerUntil = this.elapsed + 1100;
+                this.speak('Level ' + level + '. Faster now.');
+            }
+            if (!this.newBest && this.best.score > 0 && this.score > this.best.score) {
+                this.newBest = true;
+                this.speak('New best. Nice flying.');
+            }
+            for (const segment of this.segments) {
+                segment.view.x -= distance;
+                this.checkPattern(segment);
                 if (this.crashUntil) break;
             }
-            this.gates = this.gates.filter((gate) => {
-                if (gate.view.x > -GATE_WIDTH) return true;
-                this.destroyGate(gate);
-                return false;
-            });
+            while (this.segments[0]?.view.x < -200) this.segments.shift().view.destroy();
         }
 
-        steer(dt) {
-            const key = (a, b) => Number(this.keys.has(a) || this.keys.has(b));
-            const speed = MOVE_SPEED * (this.elapsed < this.coffeeUntil ? COFFEE_SPEED_MULTIPLIER : 1);
-            let dx = (key('ArrowRight', 'KeyD') - key('ArrowLeft', 'KeyA')) * speed * dt;
-            if (this.drag?.touch) {
-                dx = Phaser.Math.Clamp(this.drag.targetX - this.player.x, -speed * dt, speed * dt);
-            }
-            const thrusting = Boolean(this.drag || this.keys.has('Space'));
+        fly(dt) {
+            const thrusting = this.spaceHeld || this.pointerId !== null;
             const acceleration = GRAVITY - (thrusting ? THRUST : 0);
             this.verticalSpeed = Phaser.Math.Clamp(this.verticalSpeed + acceleration * dt,
                 -MAX_VERTICAL_SPEED, MAX_VERTICAL_SPEED);
             const y = this.player.y + this.verticalSpeed * dt;
-            this.player.x = Phaser.Math.Clamp(this.player.x + dx, 35, WIDTH - 35);
             this.player.y = Phaser.Math.Clamp(y, CEILING_Y, FLOOR_Y);
             if (y !== this.player.y) this.verticalSpeed = 0;
-            if (Math.abs(dx) > 0.01) {
-                const heading = Math.sign(dx);
-                if (this.heading && heading !== this.heading && !this.reducedMotion.matches) {
-                    this.addEffect(this.add.circle(this.player.x - heading * 23, this.player.y + 22, 9, 0xe0c8b5), 290, 18);
-                }
-                this.heading = heading;
-                this.facing = dx < 0 ? 'left' : 'right';
-            }
             if (thrusting && !this.reducedMotion.matches && this.elapsed >= this.nextExhaust) {
-                this.addEffect(this.add.circle(this.player.x, this.player.y + 32, 7, BRAND_RED), 180, -19);
+                this.addEffect(this.add.circle(START_X, this.player.y + 32, 7, BRAND_RED), 180, -19);
                 this.nextExhaust = this.elapsed + 65;
             }
             this.player.setAngle(this.reducedMotion.matches ? 0 : this.verticalSpeed / MAX_VERTICAL_SPEED * 9);
-            this.drawTaggy(this.player.y === FLOOR_Y && Math.abs(dx) > 0.01);
+            this.drawTaggy();
         }
 
         drawScenery() {
@@ -539,152 +519,95 @@ function boot() {
             }
         }
 
-        drawTaggy(moving) {
-            if (moving && !this.reducedMotion.matches) {
-                this.player.play('run-' + this.facing, true);
+        drawTaggy() {
+            if (this.state === STATES.PLAYING && this.player.y === FLOOR_Y && !this.reducedMotion.matches) {
+                this.player.play('run-right', true);
+            } else if (this.player.texture.key !== 'taggy-idle-right') {
+                this.player.anims.stop();
+                this.player.setTexture('taggy-idle-right', 0);
+            }
+        }
+
+        spawnPattern(pattern, index) {
+            const view = this.add.container(WIDTH + 80, 0).setDepth(3);
+            const hazard = this.add.image(0, pattern.y, pattern.key).setDisplaySize(pattern.width, pattern.height);
+            view.add(hazard);
+            const routeY = pattern.lane === 'high' ? 530 : 455;
+            const coins = Array.from({ length: 5 }, (_, i) => {
+                const y = routeY - (pattern.coins === 'arc' ? Math.sin(i / 4 * Math.PI) * 65 : 0);
+                return this.add.image((i - 2) * 46, y, 'coin').setScale(0.55);
+            });
+            if (index % 5 === 3) coins[2].setTexture('coffee');
+            view.add(coins);
+            this.segments.push({ view, hazard, coins, pattern, near: false, passed: false });
+        }
+
+        checkPattern(segment) {
+            const { view, hazard, pattern, coins } = segment;
+            const y = this.player.y;
+            const dx = Math.abs(view.x - START_X);
+            const dy = Math.abs(hazard.y - y);
+            // Use the opaque cap or base, with a small forgiving inset on each side.
+            const halfWidth = pattern.width * (pattern.key === 'tire' ? 0.36 : 0.42);
+            const halfHeight = pattern.height * (pattern.key === 'tire' ? 0.36 : 0.44);
+            if (pattern.key === 'tire' && !this.reducedMotion.matches) hazard.rotation = this.scroll / 48;
+            if (dx < halfWidth + PLAYER_HALF_WIDTH && dy < halfHeight + PLAYER_HALF_HEIGHT) {
+                this.hitObstacle();
                 return;
             }
-            const key = 'taggy-idle-' + this.facing;
-            if (this.player.texture.key !== key || this.player.anims.isPlaying) {
-                this.player.anims.stop();
-                this.player.setTexture(key, 0);
-            }
-        }
-
-        spawnGate(opening) {
-            const index = this.gateIndex++;
-            const center = CENTERS[index % CENTERS.length];
-            const top = center - opening / 2;
-            const bottom = Math.min(GROUND - 42, center + opening / 2);
-            const view = this.add.container(WIDTH + GATE_WIDTH / 2, 0).setDepth(3);
-            const high = HIGH_HAZARDS[index % HIGH_HAZARDS.length];
-            const low = LOW_HAZARDS[index % LOW_HAZARDS.length];
-            const hazards = [this.makeHazard(view, 0, top, high, true)];
-            if (index >= INTRO_GATES) hazards.push(this.makeHazard(view, bottom, GROUND, low, false));
-            const key = index % 13 === 8 ? 'spare_tire' : index % 7 === 3 ? 'coffee'
-                : index % 2 ? 'mile-marker' : 'marshmallow';
-            const pickupY = index < INTRO_GATES ? 548 - index * 42 : center;
-            const glow = this.add.circle(0, pickupY, 30, BRAND_RED, 0.28).setStrokeStyle(2, BRAND_RED, 0.8);
-            const pickup = this.add.image(0, pickupY, key).setScale(0.76);
-            view.add([glow, pickup]);
-            this.gates.push({ view, hazards, pickup, glow, passed: false, close: false, hit: false });
-        }
-
-        makeHazard(view, top, bottom, key, high) {
-            const graphic = this.add.graphics();
-            const left = -GATE_WIDTH / 2;
-            const height = bottom - top;
-            const cap = high ? bottom - 10 : top + 10;
-            graphic.fillStyle(0x111111).fillRoundedRect(left, top, GATE_WIDTH, height, 12);
-            graphic.fillStyle(high ? 0x383435 : 0x494241).fillRoundedRect(left + 4, top + 4, GATE_WIDTH - 8, height - 8, 9);
-            for (let y = top + 24; y < bottom - 22; y += 28) {
-                graphic.fillStyle(0x766965, 0.38).fillRoundedRect(left + 11, y, GATE_WIDTH - 22, 3, 1);
-            }
-            graphic.fillStyle(BRAND_RED).fillRoundedRect(left + 8, cap - 3, GATE_WIDTH - 16, 6, 3);
-            const icon = this.add.image(0, high ? bottom - 40 : top + Math.min(39, height / 2), key);
-            const scale = Math.min(76 / icon.width, Math.min(65, height - 8) / icon.height);
-            icon.setScale(scale);
-            view.add([graphic, icon]);
-            return { graphic, icon, top, bottom, alive: true };
-        }
-
-        destroyGate(gate) {
-            gate.view.destroy();
-        }
-
-        checkGate(gate) {
-            const { x, y } = this.player;
-            const horizontal = Math.abs(x - gate.view.x);
-            const reach = PLAYER_HALF_WIDTH + GATE_WIDTH / 2;
-            if (horizontal < reach) {
-                for (const hazard of gate.hazards) {
-                    if (!hazard.alive) continue;
-                    const clearance = y < hazard.top ? hazard.top - y - PLAYER_HALF_HEIGHT
-                        : y > hazard.bottom ? y - hazard.bottom - PLAYER_HALF_HEIGHT : -1;
-                    if (clearance <= 0) {
-                        this.hitObstacle(gate, hazard);
-                        if (this.crashUntil) return;
-                    } else if (clearance <= 15) gate.close = true;
+            if (dx < halfWidth && dy < halfHeight + PLAYER_HALF_HEIGHT + 20) segment.near = true;
+            if (!segment.passed && view.x + halfWidth + PLAYER_HALF_WIDTH < START_X) {
+                segment.passed = true;
+                if (segment.near) {
+                    this.addBonus(5);
+                    this.showFeedback('CLOSE! +5', START_X, y);
+                    this.speak('Whoa, tight one!');
                 }
             }
-            if (gate.pickup.visible && horizontal < PLAYER_HALF_WIDTH + 20 && Math.abs(y - gate.pickup.y) < PLAYER_HALF_HEIGHT + 20) {
-                this.collectPickup(gate);
-            }
-            // Count only when the gate has cleared Taggy and cannot still be ahead of his left bound.
-            if (!gate.passed && gate.view.x + GATE_WIDTH / 2 < 35 - PLAYER_HALF_WIDTH) {
-                gate.passed = true;
-                this.passed += 1;
-                if (!gate.hit) {
-                    this.addScore(10);
-                    if (gate.close) {
-                        const bonus = this.addScore(5);
-                        this.showFeedback('CLOSE! +' + bonus, x, y, '#ffffff');
-                        this.speak('Whoa, tight one!');
-                        if (!this.reducedMotion.matches) {
-                            this.addEffect(this.add.star(x + 26, y - 14, 4, 3, 12, 0xffe39a), 420, 30);
-                        }
-                    }
-                }
-                if (this.passed % GAPS_PER_LEVEL === 0) {
-                    this.level += 1;
-                    this.banner.setText('LEVEL ' + this.level).setVisible(true);
-                    this.bannerUntil = this.elapsed + 1100;
-                    this.speak('Level ' + this.level + '. Faster now.');
+            for (const coin of coins) {
+                if (!coin.visible) continue;
+                const x = view.x + coin.x;
+                if (Math.abs(x - START_X) < PLAYER_HALF_WIDTH + 15 && Math.abs(coin.y - y) < PLAYER_HALF_HEIGHT + 15) {
+                    this.collectCoin(coin, x);
+                } else if (x < START_X - PLAYER_HALF_WIDTH - 15) {
+                    coin.setVisible(false);
+                    this.coinStreak = 0;
                 }
             }
         }
 
-        addScore(points) {
-            const amount = points * (this.elapsed < this.coffeeUntil ? 2 : 1);
-            this.score += amount;
-            return amount;
+        addBonus(points) {
+            this.bonus += points;
+            this.score = Math.floor(this.scroll / 20) + this.bonus;
         }
 
-        collectPickup(gate) {
-            const key = gate.pickup.texture.key;
-            gate.pickup.setVisible(false);
-            gate.glow.setVisible(false);
-            let type = 'score';
-            let label;
-            if (key === 'coffee') {
+        collectCoin(coin, x) {
+            coin.setVisible(false);
+            const coffee = coin.texture.key === 'coffee';
+            if (coffee) {
                 this.coffeeUntil = this.elapsed + COFFEE_MS;
-                type = 'coffee';
-                label = 'BOOST!';
+                this.showFeedback('COFFEE x2', x, coin.y);
                 this.speak('Coffee break? Maybe later.');
-            } else if (key === 'spare_tire') {
-                this.shield = true;
-                type = 'spare_tire';
-                label = 'SHIELD!';
-                this.speak('Good to have a spare.');
             } else {
-                const marshmallow = key === 'marshmallow';
-                label = '+' + this.addScore(marshmallow ? 5 : 10);
-                this.speak(marshmallow ? 'Mmm, ' + label : 'Another mile in the books.');
+                const points = this.elapsed < this.coffeeUntil ? COIN_POINTS * 2 : COIN_POINTS;
+                this.addBonus(points);
+                this.showFeedback('+' + points, x, coin.y);
+                this.coinStreak += 1;
+                if (this.coinStreak % 5 === 0) this.speak(this.coinStreak + ' tags in a row.');
+                else if (this.coinStreak === 1) this.speak('One for the road.');
             }
-            this.showFeedback(label, gate.view.x, gate.pickup.y);
-            this.playPickupSound(type);
-            track('pickup_collect', { type });
+            this.playPickupSound(coffee ? 'coffee' : 'score');
+            track('pickup_collect', { type: coffee ? 'coffee' : 'score' });
         }
 
-        hitObstacle(gate, hazard) {
-            gate.hit = true;
+        hitObstacle() {
             this.playPickupSound('crash');
-            if (this.shield) {
-                this.shield = false;
-                hazard.alive = false;
-                hazard.graphic.destroy();
-                hazard.icon.destroy();
-                this.speak('That spare came in handy.');
-                this.showFeedback('SHIELD USED', this.player.x, this.player.y);
-                this.flashUntil = this.elapsed + 145;
-            } else {
-                this.speak("Ouch... that's a tag!");
-                this.flashUntil = this.elapsed + 180;
-                this.crashAt = this.elapsed;
-                this.crashUntil = this.elapsed + CRASH_MS;
-                this.clearInput();
-                this.player.anims.pause();
-            }
+            this.crashAt = this.elapsed;
+            this.crashUntil = this.elapsed + CRASH_MS;
+            this.flashUntil = this.elapsed + 180;
+            this.clearInput();
+            this.player.anims.pause();
+            this.speak("Ouch... that's a tag!");
             if (!this.reducedMotion.matches) this.player.setTint(0xff8267);
         }
 
@@ -723,10 +646,9 @@ function boot() {
             ];
             const safe = places.find(([left, top]) => left >= 8 && top >= 8
                 && left + width <= WIDTH - 8 && top + height <= HEIGHT - 8
-                && this.gates.every((gate) => gate.hazards.every((hazard) => !hazard.alive
-                    || left + width < gate.view.x - GATE_WIDTH / 2
-                    || left > gate.view.x + GATE_WIDTH / 2
-                    || top + height < hazard.top || top > hazard.bottom)));
+                && this.segments.every(({ view, pattern }) => left + width < view.x - pattern.width / 2
+                    || left > view.x + pattern.width / 2
+                    || top + height < pattern.y - pattern.height / 2 || top > pattern.y + pattern.height / 2));
             bubble.hidden = !safe;
             if (!safe) return;
             bubble.style.left = safe[0] * scale + 'px';
@@ -764,7 +686,7 @@ function boot() {
 
         playPickupSound(type) {
             if (this.muted || this.audio?.state !== 'running') return;
-            const notes = { score: [620, 830], coffee: [420, 630, 940], spare_tire: [330, 440, 550], crash: [145, 80] };
+            const notes = { score: [620, 830], coffee: [420, 630, 940], crash: [145, 80] };
             notes[type].forEach((frequency, index) => {
                 const start = this.audio.currentTime + index * 0.08;
                 const tone = this.audio.createOscillator();
@@ -779,6 +701,7 @@ function boot() {
         }
 
         finish() {
+            const record = this.score > this.best.score;
             this.best = { score: Math.max(this.best.score, this.score), level: Math.max(this.best.level, this.level) };
             try {
                 localStorage.setItem(BEST_KEY, JSON.stringify(this.best));
