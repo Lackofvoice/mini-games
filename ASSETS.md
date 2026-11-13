@@ -36,3 +36,7 @@ The generated 64 × 64 icons include a shaded marshmallow, green MILE sign, stea
 ## Phase 3 rendering and embedding
 
 The original nine PNGs are retained byte-for-byte. Run `python tools/embed-assets.py` to regenerate the classic data-URI script from them. The archived keys are bundled with the source art and remain unused by the game. Taggy now uses the native directional walk sheets while steering and the corresponding idle sheet when still. The two RV sprites also mark low hazards. Phaser Graphics produces the course obstacles, pickup art, legend icons, gradient sky, clouds and road.
+
+## Phase 4 scenery
+
+The distant trees and fences share a continuous ground band and scroll together. Foreground RVs have a separate depth and parking band. Each repeating band fits within the 600 px logical width, with clearance between adjacent copies. The road, interactive hazards, and Taggy sit above the decorative layers. The original sprite files and embedded artwork are unchanged.

@@ -72,3 +72,19 @@ Windows Explorer double-click opened the checkout in the default Comet browser. 
 | Pause, visibility and store routing | PASS | Pause froze scrolling and the active clock. Returning after a simulated hidden event required explicit resume. Both approved CTA hrefs were selected in turn, and the CTA reset on replay. |
 | Analytics, branding and audio default | PASS | Browser checks observed the view, run, pickup, store and CTA paths. Three crash results emitted three completion events. The game started muted and also ran without analytics. The intro and result contained no form or dealership reward. |
 | Physical and cross-browser checks | NOT TESTED | Physical touch, audible crash and pickup sounds, full keyboard focus traversal and screen-reader operation were not verified. |
+
+## Phase 4 verification
+
+Windows, headless Microsoft Edge 157, DevTools Protocol and the Phase 4 checkout. Browser assertions ran before committing.
+
+| Check | Status | Observed result |
+| --- | --- | --- |
+| File launch and hard reload | PASS | Edge opened the actual file URL, displayed the assets and allowed Start. Both classic local scripts used v=4. Reload with the cache disabled also passed. No uncaught browser exceptions in the interaction suite. |
+| Hold-to-thrust and steering | PASS | Space and mouse hold lifted Taggy. D moved him horizontally during thrust. Release returned him to the floor. Sustained thrust stopped at the ceiling. |
+| Beginner course and levels | PASS | A normal unattended run passed three gates and made first contact at 15.26 active seconds. A browser probe crossed the eighth gate and displayed the Level 2 banner and speech, with the next speed 9% faster. |
+| Pickups, hits and shields | PASS | Targeted in-browser pickups gave +5 and +10, activated five seconds of coffee and armed a shield. The shield absorbed one hit. Separate cone and robot collision probes each initiated an unshielded crash. |
+| Speech and copy | PASS | Observed start, marshmallow, mile marker, coffee, close call, crash, level up and idle, plus tire feedback. Triggered lines were under 40 characters and free of em dashes and emoji. A single bubble is positioned outside live hazards and hidden when no candidate fits. |
+| 360 px touch and accessibility labels | PASS | Emulated hold and horizontal slide moved Taggy upward and sideways. Release cleared pointer state and restored falling. Speech fit and the playfield label described the current controls. |
+| Scenery and brand | PASS | Inspected captures at 600 px canvas width and at 360 px viewport width. Trees and fences sit in one spaced band, with RVs in their own foreground band. Red primary buttons and accents, dark panels, white type, and the warm gray road and sky were visible at both sizes. |
+| Kept results and audio controls | PASS | Best score and level were stored. Both exact store URLs were selectable and remained gated until selection. Sound started muted and a real pointer activation opened a running WebAudio context. |
+| Physical-device play and audio by ear | NOT TESTED | Touch was emulated and audio was inspected programmatically. Full keyboard traversal and screen-reader operation remain open. |

@@ -1,11 +1,13 @@
 # DONE
 
-Phase 3 gameplay is in 4a5c38b2fda02bc1dfccea398c9940e0595350fd. Beginner-route tuning is in 4ee644a1a602bdf04973552716f8e9fabbfd5cb4. Embedded PNGs and the regenerating script are in 1be4eee3e1a45558d5d3039afb34e0197498ff9b.
+Phase 4 replaces vertical steering with gravity and hold-to-thrust. Hold Space or the mouse button on the course to fly, release to fall, and steer horizontally with Left/Right or A/D. On touch, hold and slide sideways. Taggy reacts with speech bubbles. The opener gives new players three forgiving gates before low hazards appear. See VERIFY.md for browser evidence.
+
+Both local script URLs use v=4. Whenever game.js or embedded-assets.js changes, bump both URLs to the same new version in index.html. Trees and fences share a spaced distant band, while RVs occupy a separate foreground band.
 
 # NEXT STEP
 
-Play the beginner route on a physical phone and check thumb steering, sound and difficulty.
+Play the opening gates on a physical phone and judge thumb control and speech readability.
 
 # OPEN ISSUES
 
-Physical-device touch, audible sound, full keyboard focus traversal and screen-reader operation remain unverified. Phaser needs internet access or a browser cache.
+Physical touch, audio by ear, full keyboard traversal and screen-reader use remain unverified. Phaser requires a reachable CDN or browser cache.

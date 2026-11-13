@@ -4,6 +4,16 @@ const WIDTH = 600;
 const HEIGHT = 800;
 const GROUND = 644;
 const MOVE_SPEED = 285;
+const GRAVITY = 690;
+const THRUST = 1370;
+const MAX_VERTICAL_SPEED = 330;
+const CEILING_Y = 36;
+const FLOOR_Y = GROUND - 32;
+const START_X = 150;
+const INTRO_GATES = 3;
+const CRASH_MS = 2000;
+const BRAND_RED = 0xdc2626;
+const IDLE_LINES = ['Nice day for a cruise.', 'Taking the scenic route.', 'Just doing my rounds.', 'Still with me?'];
 const COFFEE_MS = 5000;
 const COFFEE_SPEED_MULTIPLIER = 1.35;
 const GAPS_PER_LEVEL = 8;
@@ -11,16 +21,16 @@ const GATE_WIDTH = 96;
 const PLAYER_HALF_WIDTH = 23;
 const PLAYER_HALF_HEIGHT = 27;
 const BEST_KEY = 'rv-dash-best-v3';
-const CENTERS = [400, 325, 525, 350, 495, 405, 270, 445, 345, 520, 370, 455];
+const CENTERS = [465, 448, 430, 410, 465, 385, 325, 445, 360, 466, 370, 455];
 const LOW_HAZARDS = ['cone', 'robot', 'hydrant', 'lite_tt_v2', 'generic_bunkhouse_fifth_wheel_teal'];
 const HIGH_HAZARDS = ['branch', 'banner', 'sign'];
 
 function difficulty(level) {
     const step = level - 1;
     return {
-        speed: Math.min(350, 148 * 1.09 ** step),
-        opening: Math.max(176, 292 - step * 12),
-        spacing: Math.max(234, 334 - step * 10)
+        speed: Math.min(350, 110 * 1.09 ** step),
+        opening: Math.max(176, 310 - step * 12),
+        spacing: Math.max(234, 380 - step * 10)
     };
 }
 
@@ -72,7 +82,7 @@ function makeTextures(scene) {
         graphics.generateTexture(key, width, height);
     }
 
-    const ink = 0x172635;
+    const ink = 0x111111;
     const cream = 0xfff4de;
     function box(color, x, y, w, h, radius = 7) {
         graphics.fillStyle(ink).fillRoundedRect(x, y, w, h, radius);
@@ -115,11 +125,12 @@ function makeTextures(scene) {
         graphics.fillStyle(0xf57938).fillTriangle(16, 48, 30, 12, 48, 48);
         rect(cream, 23, 29, 16, 5);
         rect(cream, 19, 40, 24, 5);
-        box(0xe35632, 5, 47, 54, 12, 5);
+        box(BRAND_RED, 5, 47, 54, 12, 5);
     });
     texture('robot', 64, 64, () => {
         box(0x758b9d, 28, 5, 11, 18);
-        box(0xa6bac5, 6, 16, 52, 40);
+        box(BRAND_RED, 6, 16, 52, 40);
+        graphics.fillStyle(0xa8a4a2).fillRoundedRect(10, 20, 44, 32, 4);
         box(0x3a4b61, 11, 25, 42, 17);
         circle(0xff4f5a, 23, 33, 7);
         circle(0xff4f5a, 41, 33, 7);
@@ -150,14 +161,16 @@ function makeTextures(scene) {
     texture('sky', WIDTH, HEIGHT, () => {
         for (let y = 0; y < HEIGHT; y += 4) {
             const t = y / HEIGHT;
-            const rgb = [40 + 204 * t, 78 + 111 * t, 119 + 27 * t].map(Math.round);
+            const rgb = [44 + 156 * t, 42 + 118 * t, 46 + 98 * t].map(Math.round);
             rect((rgb[0] << 16) | (rgb[1] << 8) | rgb[2], 0, y, WIDTH, 4);
         }
-        graphics.fillStyle(0xffdeb0).fillCircle(463, 132, 49);
+        graphics.fillStyle(0xe9c7ab).fillCircle(463, 132, 49);
         for (const [x, y] of [[0, 420], [76, 388], [156, 432], [292, 404], [440, 420], [572, 415]]) {
-            graphics.fillStyle(0x648a96).fillTriangle(x - 110, 552, x, y, x + 110, 552);
+            graphics.fillStyle(0x716866).fillTriangle(x - 110, 503, x, y, x + 110, 503);
         }
-        rect(0x476d73, 0, 540, WIDTH, GROUND - 540);
+        rect(0x514b49, 0, 503, WIDTH, GROUND - 503);
+        rect(0x645b56, 0, 522, WIDTH, 5);
+        rect(0x5a5350, 0, 527, WIDTH, GROUND - 527);
     });
     texture('clouds', WIDTH, HEIGHT, () => {
         for (const [x, y] of [[60, 150], [290, 228], [505, 74]]) {
@@ -166,34 +179,35 @@ function makeTextures(scene) {
         }
     });
     texture('track', WIDTH, HEIGHT - GROUND + 24, () => {
-        rect(0x58686f, 0, 0, WIDTH, 24);
-        rect(0xe3bf79, 0, 24, WIDTH, 5);
-        rect(0x263640, 0, 29, WIDTH, HEIGHT - GROUND - 5);
+        rect(0x67615e, 0, 0, WIDTH, 24);
+        rect(0xbbb0a5, 0, 24, WIDTH, 5);
+        rect(0x302e2d, 0, 29, WIDTH, HEIGHT - GROUND - 5);
         for (const x of [0, 200, 400]) {
-            rect(0xc5ac78, x, 104, 96, 6);
-            rect(0x334750, x + 20, 66, 44, 2);
-            rect(0x334750, x + 128, 134, 24, 2);
+            rect(0xb7aaa0, x, 104, 96, 6);
+            rect(0x494441, x + 20, 66, 44, 2);
+            rect(0x494441, x + 128, 134, 24, 2);
         }
     });
     graphics.destroy();
 }
 
+// Trees and fences share a distant band. RVs sit in a separate foreground band.
 const SCENERY = [
-    ['prop_tree_pine', 12, 547, 104, 148, 0x83b4a6, 0.18],
-    ['prop_tree_pine', 338, 548, 90, 128, 0x83b4a6, 0.18],
-    ['prop_fence_segment', 85, 592, 156, 64, 0xa2b9ad, 0.36],
-    ['prop_fence_segment', 400, 592, 156, 64, 0xa2b9ad, 0.36],
-    ['lite_tt_v2', 168, 610, 218, 132, 0xe5efed, 0.36],
-    ['generic_bunkhouse_fifth_wheel_teal', 478, 610, 248, 146, 0xe5efed, 0.36]
+    ['prop_tree_pine', 68, 521, 72, 91, 0xb5aaa1, 0.18, 0],
+    ['prop_fence_segment', 220, 521, 158, 54, 0xb5aaa1, 0.18, 0],
+    ['prop_tree_pine', 377, 521, 70, 88, 0xb5aaa1, 0.18, 0],
+    ['prop_fence_segment', 519, 521, 144, 54, 0xb5aaa1, 0.18, 0],
+    ['lite_tt_v2', 152, 611, 181, 87, 0xd4c8be, 0.36, 1],
+    ['generic_bunkhouse_fifth_wheel_teal', 447, 611, 200, 87, 0xd4c8be, 0.36, 1]
 ];
 
 function makeScenery(scene) {
-    return SCENERY.flatMap(([key, x, y, maxWidth, maxHeight, tint, speed]) => {
+    return SCENERY.flatMap(([key, x, y, maxWidth, maxHeight, tint, speed, depth]) => {
         if (!scene.textures.exists(key)) return [];
         const frame = scene.textures.getFrame(key);
         const scale = Math.min(maxWidth / frame.width, maxHeight / frame.height);
         return [-1, 0, 1].map((copy) => ({
-            image: scene.add.image(x + copy * WIDTH, y, key).setOrigin(0.5, 1).setScale(scale).setTint(tint),
+            image: scene.add.image(x + copy * WIDTH, y, key).setOrigin(0.5, 1).setScale(scale).setTint(tint).setDepth(depth),
             x: x + copy * WIDTH,
             speed
         }));
@@ -246,7 +260,7 @@ function boot() {
             this.add.image(0, 0, 'sky').setOrigin(0);
             this.clouds = this.add.tileSprite(0, 0, WIDTH, HEIGHT, 'clouds').setOrigin(0);
             this.scenery = makeScenery(this);
-            this.road = this.add.tileSprite(0, GROUND - 24, WIDTH, HEIGHT - GROUND + 24, 'track').setOrigin(0);
+            this.road = this.add.tileSprite(0, GROUND - 24, WIDTH, HEIGHT - GROUND + 24, 'track').setOrigin(0).setDepth(2);
             for (const side of ['left', 'right']) {
                 const key = 'run-' + side;
                 if (!this.anims.exists(key)) this.anims.create({
@@ -256,14 +270,14 @@ function boot() {
                     repeat: -1
                 });
             }
-            this.player = this.add.sprite(150, 400, 'taggy-idle-right', 0).setScale(0.5).setDepth(5);
+            this.player = this.add.sprite(START_X, FLOOR_Y, 'taggy-idle-right', 0).setScale(0.5).setDepth(5);
             this.muted = true;
             this.best = readBest();
             this.gates = [];
             this.effects = [];
             this.banner = this.add.text(WIDTH / 2, 100, '', {
                 fontFamily: 'monospace', fontStyle: 'bold', fontSize: '52px',
-                color: '#ffdf97', stroke: '#172635', strokeThickness: 10
+                color: '#ffffff', stroke: '#8f1616', strokeThickness: 10
             }).setOrigin(0.5).setDepth(8).setVisible(false);
             this.makeLegend();
             this.bindControls();
@@ -310,10 +324,11 @@ function boot() {
                 if (document.hidden && this.state === STATES.PLAYING) this.setRoundState(STATES.PAUSED);
             });
             on(window, 'blur', () => this.clearInput());
-            const gameplayKeys = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS'];
+            const gameplayKeys = ['ArrowLeft', 'ArrowRight', 'KeyA', 'KeyD', 'Space'];
             on(document, 'keydown', (event) => {
                 if (this.state !== STATES.PLAYING || !gameplayKeys.includes(event.code)
                     || event.ctrlKey || event.metaKey || event.altKey) return;
+                if (event.code === 'Space' && event.target.closest('button, a')) return;
                 event.preventDefault();
                 this.keys.add(event.code);
             });
@@ -322,17 +337,11 @@ function boot() {
             on(field, 'pointerdown', (event) => {
                 if (event.button !== 0 || this.drag || this.state !== STATES.PLAYING) return;
                 field.setPointerCapture(event.pointerId);
-                this.drag = { id: event.pointerId, x: event.clientX, y: event.clientY,
-                    targetX: this.player.x, targetY: this.player.y };
+                field.focus({ preventScroll: true });
+                this.drag = { id: event.pointerId, touch: event.pointerType === 'touch', targetX: this.pointerX(event) };
             });
             on(field, 'pointermove', (event) => {
-                if (this.drag?.id !== event.pointerId) return;
-                const rect = field.getBoundingClientRect();
-                const drag = this.drag;
-                drag.targetX = Phaser.Math.Clamp(drag.targetX + (event.clientX - drag.x) * WIDTH / rect.width, 35, WIDTH - 35);
-                drag.targetY = Phaser.Math.Clamp(drag.targetY + (event.clientY - drag.y) * HEIGHT / rect.height, 34, HEIGHT - 34);
-                drag.x = event.clientX;
-                drag.y = event.clientY;
+                if (this.drag?.id === event.pointerId && this.drag.touch) this.drag.targetX = this.pointerX(event);
             });
             for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) {
                 on(field, event, (pointer) => {
@@ -368,6 +377,11 @@ function boot() {
             }
         }
 
+        pointerX(event) {
+            const rect = byId('playfield').getBoundingClientRect();
+            return Phaser.Math.Clamp((event.clientX - rect.left) * WIDTH / rect.width, 35, WIDTH - 35);
+        }
+
         clearInput() {
             this.keys.clear();
             const field = byId('playfield');
@@ -386,7 +400,7 @@ function boot() {
             this.passed = 0;
             this.elapsed = 0;
             this.scroll = 0;
-            this.nextGate = 0;
+            this.nextGate = 110;
             this.gateIndex = 0;
             this.coffeeUntil = 0;
             this.shield = false;
@@ -395,12 +409,16 @@ function boot() {
             this.crashUntil = 0;
             this.flashUntil = 0;
             this.bannerUntil = 0;
-            this.player.clearTint().setAngle(0).setPosition(150, 400);
+            this.verticalSpeed = 0;
+            this.nextExhaust = 0;
+            this.idleLine = 0;
+            this.player.clearTint().setAngle(0).setPosition(START_X, FLOOR_Y);
             this.drawTaggy(false);
             this.banner.setVisible(false);
             this.drawScenery();
             this.selectStore(null);
             this.setRoundState(STATES.PLAYING);
+            this.speak("Price Right. Let's roll.");
             this.updateStats();
             byId('playfield').focus({ preventScroll: true });
             track('game_start');
@@ -451,6 +469,7 @@ function boot() {
             this.drawScenery();
             this.updateStats();
             this.updateEffects();
+            this.updateSpeech();
         }
 
         advance(step) {
@@ -482,31 +501,33 @@ function boot() {
 
         steer(dt) {
             const key = (a, b) => Number(this.keys.has(a) || this.keys.has(b));
-            let x = key('ArrowRight', 'KeyD') - key('ArrowLeft', 'KeyA');
-            let y = key('ArrowDown', 'KeyS') - key('ArrowUp', 'KeyW');
             const speed = MOVE_SPEED * (this.elapsed < this.coffeeUntil ? COFFEE_SPEED_MULTIPLIER : 1);
-            let travel = speed * dt;
-            if (this.drag) {
-                x = this.drag.targetX - this.player.x;
-                y = this.drag.targetY - this.player.y;
-                travel = Math.min(travel, Math.hypot(x, y));
+            let dx = (key('ArrowRight', 'KeyD') - key('ArrowLeft', 'KeyA')) * speed * dt;
+            if (this.drag?.touch) {
+                dx = Phaser.Math.Clamp(this.drag.targetX - this.player.x, -speed * dt, speed * dt);
             }
-            const length = Math.hypot(x, y);
-            if (length > 0.001) {
-                this.player.x = Phaser.Math.Clamp(this.player.x + travel * x / length, 35, WIDTH - 35);
-                this.player.y = Phaser.Math.Clamp(this.player.y + travel * y / length, 34, HEIGHT - 34);
-            }
-            if (Math.abs(x) > 0.1) {
-                const heading = Math.sign(x);
+            const thrusting = Boolean(this.drag || this.keys.has('Space'));
+            const acceleration = GRAVITY - (thrusting ? THRUST : 0);
+            this.verticalSpeed = Phaser.Math.Clamp(this.verticalSpeed + acceleration * dt,
+                -MAX_VERTICAL_SPEED, MAX_VERTICAL_SPEED);
+            const y = this.player.y + this.verticalSpeed * dt;
+            this.player.x = Phaser.Math.Clamp(this.player.x + dx, 35, WIDTH - 35);
+            this.player.y = Phaser.Math.Clamp(y, CEILING_Y, FLOOR_Y);
+            if (y !== this.player.y) this.verticalSpeed = 0;
+            if (Math.abs(dx) > 0.01) {
+                const heading = Math.sign(dx);
                 if (this.heading && heading !== this.heading && !this.reducedMotion.matches) {
-                    this.addEffect(this.add.circle(this.player.x - heading * 23, this.player.y + 22, 9, 0xf4dab5), 290, 18);
+                    this.addEffect(this.add.circle(this.player.x - heading * 23, this.player.y + 22, 9, 0xe0c8b5), 290, 18);
                 }
                 this.heading = heading;
-                this.facing = x < 0 ? 'left' : 'right';
+                this.facing = dx < 0 ? 'left' : 'right';
             }
-            const tilt = length > 0.001 ? Phaser.Math.Clamp(y / length * 9 + x / length * 4, -12, 12) : 0;
-            this.player.setAngle(this.reducedMotion.matches ? 0 : tilt);
-            this.drawTaggy(length > 0.001);
+            if (thrusting && !this.reducedMotion.matches && this.elapsed >= this.nextExhaust) {
+                this.addEffect(this.add.circle(this.player.x, this.player.y + 32, 7, BRAND_RED), 180, -19);
+                this.nextExhaust = this.elapsed + 65;
+            }
+            this.player.setAngle(this.reducedMotion.matches ? 0 : this.verticalSpeed / MAX_VERTICAL_SPEED * 9);
+            this.drawTaggy(this.player.y === FLOOR_Y && Math.abs(dx) > 0.01);
         }
 
         drawScenery() {
@@ -534,19 +555,19 @@ function boot() {
             const index = this.gateIndex++;
             const center = CENTERS[index % CENTERS.length];
             const top = center - opening / 2;
-            const bottom = center + opening / 2;
+            const bottom = Math.min(GROUND - 42, center + opening / 2);
             const view = this.add.container(WIDTH + GATE_WIDTH / 2, 0).setDepth(3);
             const high = HIGH_HAZARDS[index % HIGH_HAZARDS.length];
             const low = LOW_HAZARDS[index % LOW_HAZARDS.length];
-            const hazards = [
-                this.makeHazard(view, 0, top, high, true),
-                this.makeHazard(view, bottom, HEIGHT, low, false)
-            ];
+            const hazards = [this.makeHazard(view, 0, top, high, true)];
+            if (index >= INTRO_GATES) hazards.push(this.makeHazard(view, bottom, GROUND, low, false));
             const key = index % 13 === 8 ? 'spare_tire' : index % 7 === 3 ? 'coffee'
                 : index % 2 ? 'mile-marker' : 'marshmallow';
-            const pickup = this.add.image(0, center, key).setScale(0.76);
-            view.add(pickup);
-            this.gates.push({ view, center, hazards, pickup, passed: false, close: false, hit: false });
+            const pickupY = index < INTRO_GATES ? 548 - index * 42 : center;
+            const glow = this.add.circle(0, pickupY, 30, BRAND_RED, 0.28).setStrokeStyle(2, BRAND_RED, 0.8);
+            const pickup = this.add.image(0, pickupY, key).setScale(0.76);
+            view.add([glow, pickup]);
+            this.gates.push({ view, hazards, pickup, glow, passed: false, close: false, hit: false });
         }
 
         makeHazard(view, top, bottom, key, high) {
@@ -554,14 +575,14 @@ function boot() {
             const left = -GATE_WIDTH / 2;
             const height = bottom - top;
             const cap = high ? bottom - 10 : top + 10;
-            graphic.fillStyle(0x172635).fillRoundedRect(left, top, GATE_WIDTH, height, 12);
-            graphic.fillStyle(high ? 0x2c4654 : 0x3a4c58).fillRoundedRect(left + 4, top + 4, GATE_WIDTH - 8, height - 8, 9);
+            graphic.fillStyle(0x111111).fillRoundedRect(left, top, GATE_WIDTH, height, 12);
+            graphic.fillStyle(high ? 0x383435 : 0x494241).fillRoundedRect(left + 4, top + 4, GATE_WIDTH - 8, height - 8, 9);
             for (let y = top + 24; y < bottom - 22; y += 28) {
-                graphic.fillStyle(0x56717a, 0.38).fillRoundedRect(left + 11, y, GATE_WIDTH - 22, 3, 1);
+                graphic.fillStyle(0x766965, 0.38).fillRoundedRect(left + 11, y, GATE_WIDTH - 22, 3, 1);
             }
-            graphic.fillStyle(0xf0a35c).fillRoundedRect(left + 8, cap - 3, GATE_WIDTH - 16, 6, 3);
-            const icon = this.add.image(0, high ? bottom - 42 : top + 43, key);
-            const scale = Math.min(76 / icon.width, 65 / icon.height);
+            graphic.fillStyle(BRAND_RED).fillRoundedRect(left + 8, cap - 3, GATE_WIDTH - 16, 6, 3);
+            const icon = this.add.image(0, high ? bottom - 40 : top + Math.min(39, height / 2), key);
+            const scale = Math.min(76 / icon.width, Math.min(65, height - 8) / icon.height);
             icon.setScale(scale);
             view.add([graphic, icon]);
             return { graphic, icon, top, bottom, alive: true };
@@ -586,7 +607,7 @@ function boot() {
                     } else if (clearance <= 15) gate.close = true;
                 }
             }
-            if (gate.pickup.visible && horizontal < PLAYER_HALF_WIDTH + 20 && Math.abs(y - gate.center) < PLAYER_HALF_HEIGHT + 20) {
+            if (gate.pickup.visible && horizontal < PLAYER_HALF_WIDTH + 20 && Math.abs(y - gate.pickup.y) < PLAYER_HALF_HEIGHT + 20) {
                 this.collectPickup(gate);
             }
             // Count only when the gate has cleared Taggy and cannot still be ahead of his left bound.
@@ -597,7 +618,8 @@ function boot() {
                     this.addScore(10);
                     if (gate.close) {
                         const bonus = this.addScore(5);
-                        this.showFeedback('✦ CLOSE! +' + bonus, x, y, '#fff1a8');
+                        this.showFeedback('CLOSE! +' + bonus, x, y, '#ffffff');
+                        this.speak('Whoa, tight one!');
                         if (!this.reducedMotion.matches) {
                             this.addEffect(this.add.star(x + 26, y - 14, 4, 3, 12, 0xffe39a), 420, 30);
                         }
@@ -607,6 +629,7 @@ function boot() {
                     this.level += 1;
                     this.banner.setText('LEVEL ' + this.level).setVisible(true);
                     this.bannerUntil = this.elapsed + 1100;
+                    this.speak('Level ' + this.level + '. Faster now.');
                 }
             }
         }
@@ -620,20 +643,25 @@ function boot() {
         collectPickup(gate) {
             const key = gate.pickup.texture.key;
             gate.pickup.setVisible(false);
+            gate.glow.setVisible(false);
             let type = 'score';
             let label;
             if (key === 'coffee') {
                 this.coffeeUntil = this.elapsed + COFFEE_MS;
                 type = 'coffee';
                 label = 'BOOST!';
+                this.speak('Coffee break? Maybe later.');
             } else if (key === 'spare_tire') {
                 this.shield = true;
                 type = 'spare_tire';
                 label = 'SHIELD!';
+                this.speak('Good to have a spare.');
             } else {
-                label = '+' + this.addScore(key === 'marshmallow' ? 5 : 10);
+                const marshmallow = key === 'marshmallow';
+                label = '+' + this.addScore(marshmallow ? 5 : 10);
+                this.speak(marshmallow ? 'Mmm, ' + label : 'Another mile in the books.');
             }
-            this.showFeedback(label, gate.view.x, gate.center);
+            this.showFeedback(label, gate.view.x, gate.pickup.y);
             this.playPickupSound(type);
             track('pickup_collect', { type });
         }
@@ -646,14 +674,64 @@ function boot() {
                 hazard.alive = false;
                 hazard.graphic.destroy();
                 hazard.icon.destroy();
+                this.speak('That spare came in handy.');
                 this.showFeedback('SHIELD USED', this.player.x, this.player.y);
                 this.flashUntil = this.elapsed + 145;
             } else {
-                this.crashUntil = this.elapsed + 220;
+                this.speak("Ouch... that's a tag!");
+                this.flashUntil = this.elapsed + 180;
+                this.crashAt = this.elapsed;
+                this.crashUntil = this.elapsed + CRASH_MS;
                 this.clearInput();
                 this.player.anims.pause();
             }
             if (!this.reducedMotion.matches) this.player.setTint(0xff8267);
+        }
+
+        speak(line) {
+            this.lastSpeech = this.elapsed;
+            this.speechUntil = this.elapsed + 2000;
+            const bubble = byId('speech');
+            bubble.textContent = line;
+            bubble.hidden = false;
+            this.updateSpeech();
+        }
+
+        updateSpeech() {
+            const bubble = byId('speech');
+            if (!this.crashUntil && this.elapsed - this.lastSpeech >= 6000) {
+                this.speak(IDLE_LINES[this.idleLine++ % IDLE_LINES.length]);
+                return;
+            }
+            if (this.elapsed >= this.speechUntil) {
+                bubble.hidden = true;
+                return;
+            }
+            bubble.hidden = false;
+            const field = byId('playfield');
+            const scale = field.clientWidth / WIDTH;
+            const width = bubble.offsetWidth / (scale || 1);
+            const height = bubble.offsetHeight / (scale || 1);
+            const { x, y } = this.player;
+            const clampX = (left) => Phaser.Math.Clamp(left, 8, WIDTH - width - 8);
+            const clampY = (top) => Phaser.Math.Clamp(top, 8, HEIGHT - height - 8);
+            const places = [
+                [clampX(x - width / 2), y - 48 - height],
+                [clampX(x - width / 2), y + 48],
+                [x - 43 - width, clampY(y - height / 2)],
+                [x + 43, clampY(y - height / 2)]
+            ];
+            const safe = places.find(([left, top]) => left >= 8 && top >= 8
+                && left + width <= WIDTH - 8 && top + height <= HEIGHT - 8
+                && this.gates.every((gate) => gate.hazards.every((hazard) => !hazard.alive
+                    || left + width < gate.view.x - GATE_WIDTH / 2
+                    || left > gate.view.x + GATE_WIDTH / 2
+                    || top + height < hazard.top || top > hazard.bottom)));
+            bubble.hidden = !safe;
+            if (!safe) return;
+            bubble.style.left = safe[0] * scale + 'px';
+            bubble.style.top = safe[1] * scale + 'px';
+            bubble.style.opacity = this.reducedMotion.matches ? 1 : Math.min(1, (this.speechUntil - this.elapsed) / 360);
         }
 
         showFeedback(label, x, y, color = '#fff6df') {
@@ -671,7 +749,7 @@ function boot() {
 
         updateEffects() {
             if (this.elapsed >= this.bannerUntil) this.banner.setVisible(false);
-            if (this.elapsed >= this.flashUntil && !this.crashUntil) this.player.clearTint();
+            if (this.elapsed >= this.flashUntil) this.player.clearTint();
             this.effects = this.effects.filter(({ object, start, duration, rise, y }) => {
                 const progress = (this.elapsed - start) / duration;
                 if (progress >= 1) {
@@ -711,10 +789,11 @@ function boot() {
             byId('outcome').textContent = 'Best score ' + this.best.score + ' · Best level ' + this.best.level;
             this.setRoundState(STATES.GAME_OVER);
             byId('effects').hidden = true;
+            byId('speech').hidden = true;
             byId('result-title').focus();
             track('game_complete', {
                 result: 'crash', score: this.score, level: this.level,
-                duration_seconds: Math.round((this.elapsed - 220) / 1000)
+                duration_seconds: Math.round(this.crashAt / 1000)
             });
         }
 

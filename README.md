@@ -16,7 +16,7 @@ Open http://127.0.0.1:8765/ in your browser.
 
 ## Controls and scoring
 
-Use arrows or WASD to steer in eight directions. On touchscreens, drag anywhere in the playfield to steer relative to where your finger began. Release to stop steering. The intro legend shows what to collect and what to avoid.
+Hold Space or the mouse button on the course to fly up. Release to fall. Use Left and Right arrows or A and D to steer. On touchscreens, hold the playfield to fly and slide your finger sideways to steer. The intro legend shows what to collect and what to avoid.
 
 - Marshmallows add 5 and mile markers add 10. A clean gap adds 10 and a close pass adds 5 more.
 - Coffee increases steering speed by 35% and doubles earned points for five active seconds.
@@ -29,10 +29,10 @@ After a run, choose DeWitt or Sterling Heights to enable its inventory link, or 
 
 ## Files and settings
 
-- index.html holds the layout and classic script tags. game.js contains gameplay, rendering, difficulty and store routes.
+- index.html holds the layout and classic script tags. game.js contains gameplay, rendering, difficulty and store routes. Bump the matching version on both local scripts in index.html whenever game.js or embedded-assets.js changes.
 - game_assets/embedded-assets.js contains nine PNG data URIs. Regenerate it with `python tools/embed-assets.py` after changing the originals.
 - ASSETS.md records art provenance. VERIFY.md contains browser evidence. RESUME.md contains the handoff.
-- The game originated at Lackofvoice/mini-games commit 70fd287fc72d7b6e54f64d3a2447442ad8bfacdd. The Phase 3 baseline was 5134195.
+- The game originated at Lackofvoice/mini-games commit 70fd287fc72d7b6e54f64d3a2447442ad8bfacdd. The Phase 4 baseline was c43a93f.
 
 The analytics helper uses an existing gtag function or dataLayer. Events are game_view, game_start, game_complete, store_selected, cta_click and pickup_collect. Completion records crash, score, level and active duration. The helper sends no personal data and loads no vendor script.
 
