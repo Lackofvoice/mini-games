@@ -1,28 +1,79 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RV Sale Dash</title>
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
-    <style>
-        body { margin: 0; padding: 0; background-color: #000; }
-        #game-container { display: flex; justify-content: center; align-items: center; height: 100vh; }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RV Dash</title>
+  <script defer src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+  <script defer src="game.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body { margin: 0; background: #101c23; color: #f6f0df; font: 1rem system-ui, sans-serif; }
+    main { width: min(100% - 24px, 600px); margin: 16px auto; }
+    h1 { margin: 0; font: bold clamp(2rem, 7vw, 3rem) monospace; letter-spacing: -.05em; }
+    p { margin: 8px 0; }
+    .brand { font-weight: 700; color: #ffd17a; }
+    .bar, .controls, .stores { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .bar { justify-content: space-between; margin: 12px 0 8px; min-height: 46px; }
+    .stats { display: flex; flex-wrap: wrap; gap: 8px 16px; font-variant-numeric: tabular-nums; }
+    button, .cta { display: inline-grid; place-items: center; min-height: 44px; padding: 8px 12px;
+      border: 2px solid #647d87; border-radius: 4px; color: #f6f0df; background: #203741;
+      font: inherit; font-weight: 700; cursor: pointer; }
+    button[aria-pressed="true"], .primary { background: #ffd17a; color: #101c23; border-color: #ffd17a; }
+    button:disabled { opacity: .55; cursor: default; }
+    :focus-visible { outline: 3px solid #8de5fc; outline-offset: 3px; }
+    #playfield { position: relative; width: min(100%, 55dvh); aspect-ratio: 3 / 4; margin: auto; background: #294956; }
+    canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; touch-action: none; }
+    .controls { justify-content: center; margin-top: 10px; }
+    .controls button { min-width: 72px; touch-action: none; user-select: none; }
+    #result { background: #203741; padding: 16px; border: 2px solid #647d87; }
+    #result h2, #result h3 { margin: 0 0 8px; }
+    .result-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    #status:empty { display: none; }
+    @media (orientation: landscape) and (max-height: 520px) {
+      #game-area { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px; }
+      #playfield { margin: 0; }
+    }
+  </style>
 </head>
 <body>
-    <div id="game-container">
-        <div id="phaser-game"></div>
+  <main>
+    <div class="brand">Price Right RV</div>
+    <h1>RV Dash</h1>
+    <p id="instructions">Collect tokens and jump over obstacles. Reach 50 points in 60 seconds.</p>
+    <p id="keyboard-help">Use arrow keys to move and Up or Space to jump. You can also tap the playfield to jump.</p>
+    <div class="bar">
+      <div class="stats"><span>Score <strong id="score">0</strong></span><span>Time <strong id="time">60</strong>s</span></div>
+      <button id="start" class="primary" disabled>Start game</button>
+      <button id="pause" hidden>Pause</button>
     </div>
-
-    <div id="email-capture-form" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 100; background-color: #fff; padding: 20px; border: 2px solid #000; text-align: center;">
-        <p>Enter your email for a Turbo Deal Pack!</p>
-        <input type="email" id="email-input" placeholder="your.email@example.com" style="margin-bottom: 10px; padding: 5px; width: 80%;">
-        <button id="submit-email-button" style="padding: 5px 10px;">Submit</button>
-        <p id="email-thanks-message" style="display: none; color: green; margin-top: 10px;">Thanks for signing up!</p>
-        <p id="email-error-message" style="display: none; color: red; margin-top: 10px;">Please enter a valid email.</p>
+    <p id="status" role="status">Loading game…</p>
+    <div id="game-area">
+      <div id="playfield" role="img" aria-label="RV lot with Taggy, the runner"></div>
+      <div class="controls" aria-label="Gameplay controls">
+        <button id="left" disabled>Left</button>
+        <button id="right" disabled>Right</button>
+        <button id="jump" disabled>Jump</button>
+      </div>
     </div>
-
-    <script src="game.js"></script>
+    <section id="result" hidden aria-labelledby="result-title">
+      <h2 id="result-title" tabindex="-1">Round complete</h2>
+      <p id="final-score"></p>
+      <p id="outcome"></p>
+      <p>Points are for entertainment and have no cash value.</p>
+      <h3>Your next step</h3>
+      <p>Choose a Price Right RV store to browse inventory.</p>
+      <div class="stores" role="group" aria-label="Choose your store">
+        <button data-store="dewitt" aria-pressed="false">DeWitt</button>
+        <button data-store="sterlingHeights" aria-pressed="false">Sterling Heights</button>
+      </div>
+      <p id="store-status" role="status">Select a store to enable the inventory link.</p>
+      <div class="result-actions">
+        <a id="inventory" class="cta primary" hidden>Browse inventory</a>
+        <button id="replay">Play again</button>
+      </div>
+    </section>
+  </main>
 </body>
 </html>
