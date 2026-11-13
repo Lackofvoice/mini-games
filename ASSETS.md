@@ -12,7 +12,7 @@ The official PNGs were extracted on 2026-11-13 from the inline script on the [ap
 | WALK_L | taggy_walk_l.png | 640 × 144, four left-facing 160 × 144 frames |
 | KEYS | taggy_keys.png | 72 × 68, archived reference |
 
-Run uses four frames at 140 ms per frame. Jump holds walk frame 1 for the current direction. The sheet frames display at 80 × 72 logical pixels, with visible art approximately 64 px high. Collision size is 36 × 60. Phaser pixel-art mode and CSS pixelated scaling use nearest-neighbor sampling.
+Run uses four frames at 140 ms per frame. Phase 3 uses idle and walk frames for free steering. The sheet frames display at 80 × 72 logical pixels, with visible art approximately 64 px high. Collision size is 36 × 60. Phaser pixel-art mode and CSS pixelated scaling use nearest-neighbor sampling.
 
 The keys are kept as an approved source asset and are never loaded during gameplay. A dealership game can make a key pickup look like winning a vehicle.
 
@@ -31,4 +31,8 @@ makeTextures generates the sky, hills, track, pickups and hazards. The track scr
 
 ## Generated track items
 
-Marshmallow and mile-marker score pickups use mint and cyan octagons. Coffee and spare tire use amber and violet octagons. All pickups are 44 × 44. Cone and toy robot obstacles use angular orange and red silhouettes at 48 × 44. The items are drawn with Phaser Graphics in makeTextures.
+The generated 64 × 64 icons include a shaded marshmallow, green MILE sign, steaming coffee, tire with hub, striped cone, robot, hydrant, branch, banner and overhead sign. Gameplay and the intro legend share the textures.
+
+## Phase 3 rendering and embedding
+
+The original nine PNGs are retained byte-for-byte. Run `python tools/embed-assets.py` to regenerate the classic data-URI script from them. The archived keys are bundled with the source art and remain unused by the game. Taggy now uses the native directional walk sheets while steering and the corresponding idle sheet when still. The two RV sprites also mark low hazards. Phaser Graphics produces the course obstacles, pickup art, legend icons, gradient sky, clouds and road.

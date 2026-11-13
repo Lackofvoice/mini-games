@@ -3,22 +3,37 @@
 const WIDTH = 600;
 const HEIGHT = 800;
 const GROUND = 644;
-const ROUND_MS = 60_000;
-const WIN_SCORE = 50;
-const GRAVITY = 1050;
-const JUMP_SPEED = 510;
-const MOVE_SPEED = 210;
-const LOT_SPEED = 235;
-const SPAWN_MS = 1250;
+const MOVE_SPEED = 285;
 const COFFEE_MS = 5000;
 const COFFEE_SPEED_MULTIPLIER = 1.35;
-const COFFEE_OBSTACLE_GAP = 6250;
-const SPAWN_PATTERN = [
-    'marshmallow', 'mile-marker', 'cone', 'marshmallow', 'coffee',
-    'robot', 'mile-marker', 'marshmallow', 'cone', 'mile-marker',
-    'spare_tire', 'robot', 'marshmallow', 'mile-marker', 'cone', 'marshmallow'
-];
-const OBSTACLES = new Set(['cone', 'robot']);
+const GAPS_PER_LEVEL = 8;
+const GATE_WIDTH = 96;
+const PLAYER_HALF_WIDTH = 23;
+const PLAYER_HALF_HEIGHT = 27;
+const BEST_KEY = 'rv-dash-best-v3';
+const CENTERS = [400, 325, 460, 350, 480, 405, 300, 445, 345, 490, 370, 455];
+const LOW_HAZARDS = ['cone', 'robot', 'hydrant', 'lite_tt_v2', 'generic_bunkhouse_fifth_wheel_teal'];
+const HIGH_HAZARDS = ['branch', 'banner', 'sign'];
+
+function difficulty(level) {
+    const step = level - 1;
+    return {
+        speed: Math.min(350, 148 * 1.09 ** step),
+        opening: Math.max(176, 292 - step * 12),
+        spacing: Math.max(234, 334 - step * 10)
+    };
+}
+
+function readBest() {
+    try {
+        const best = JSON.parse(localStorage.getItem(BEST_KEY));
+        if (Number.isFinite(best?.score) && Number.isFinite(best?.level)) return best;
+    } catch {
+        // Play still works when storage is unavailable.
+    }
+    return { score: 0, level: 1 };
+}
+
 const STORE_URLS = {
     dewitt: 'https://www.pricerightrv.com/location/dewitt',
     sterlingHeights: 'https://www.pricerightrv.com/location/sterling-heights'
@@ -57,67 +72,98 @@ function makeTextures(scene) {
         graphics.generateTexture(key, width, height);
     }
 
-    function pickup(key, fill, draw) {
-        texture(key, 44, 44, () => {
-            rect(0x19232c, 0, 8, 44, 28);
-            rect(0x19232c, 8, 0, 28, 44);
-            rect(fill, 4, 12, 36, 20);
-            rect(fill, 12, 4, 20, 36);
-            draw();
-        });
+    const ink = 0x172635;
+    const cream = 0xfff4de;
+    function box(color, x, y, w, h, radius = 7) {
+        graphics.fillStyle(ink).fillRoundedRect(x, y, w, h, radius);
+        graphics.fillStyle(color).fillRoundedRect(x + 4, y + 4, w - 8, h - 8, Math.max(2, radius - 4));
     }
-    pickup('marshmallow', 0x65dca7, () => {
-        rect(0x684d38, 24, 24, 4, 12);
-        rect(0xfff6df, 12, 12, 20, 16);
-        rect(0xe2ad79, 16, 24, 16, 4);
+    function circle(color, x, y, radius) {
+        graphics.fillStyle(ink).fillCircle(x, y, radius);
+        graphics.fillStyle(color).fillCircle(x, y, radius - 4);
+    }
+    texture('marshmallow', 64, 64, () => {
+        box(cream, 9, 10, 46, 44, 13);
+        rect(0xe5b59d, 17, 42, 30, 5);
+        rect(0xffffff, 19, 18, 25, 4);
     });
-    pickup('mile-marker', 0x8de5fc, () => {
-        rect(0x245360, 20, 24, 4, 12);
-        rect(0x245360, 12, 12, 20, 16);
-        rect(0xf6f0df, 16, 16, 12, 4);
-        rect(0xf6f0df, 20, 20, 4, 4);
+    texture('mile-marker', 64, 64, () => {
+        box(0x85af99, 27, 35, 11, 23);
+        box(0x187449, 3, 9, 58, 33);
+        const letters = [['101','111','101','101','101'], ['111','010','010','010','111'],
+            ['100','100','100','100','111'], ['111','100','110','100','111']];
+        letters.forEach((letter, i) => letter.forEach((row, y) => [...row].forEach((pixel, x) => {
+            if (pixel === '1') rect(cream, 10 + i * 12 + x * 3, 18 + y * 3, 3, 3);
+        })));
     });
-    pickup('coffee', 0xffd17a, () => {
-        rect(0x80513f, 28, 16, 8, 12);
-        rect(0xf6f0df, 12, 12, 20, 20);
-        rect(0x80513f, 16, 16, 12, 12);
-        rect(0xf6f0df, 16, 32, 12, 4);
+    texture('coffee', 64, 64, () => {
+        circle(0xdb9c68, 49, 35, 12);
+        box(0x8d4935, 9, 24, 40, 34, 10);
+        rect(0xffd09e, 16, 31, 24, 5);
+        graphics.lineStyle(4, cream).beginPath()
+            .moveTo(22, 19).lineTo(25, 12).lineTo(22, 5)
+            .moveTo(34, 19).lineTo(38, 12).lineTo(35, 5).strokePath();
     });
-    pickup('spare_tire', 0xcbabff, () => {
-        rect(0x232b3a, 12, 8, 20, 28);
-        rect(0x232b3a, 8, 12, 28, 20);
-        rect(0xf6f0df, 16, 16, 12, 12);
-        rect(0x6752a0, 20, 20, 4, 4);
+    texture('spare_tire', 64, 64, () => {
+        circle(0x344353, 32, 32, 26);
+        circle(0xadc2c7, 32, 32, 15);
+        circle(0x435363, 32, 32, 7);
+        for (const x of [17, 25, 33, 41]) rect(0x718494, x, 11, 4, 4);
     });
-    texture('cone', 48, 44, () => {
-        rect(0x19232c, 0, 36, 48, 8);
-        rect(0xf58343, 8, 28, 32, 8);
-        rect(0xf58343, 16, 12, 16, 16);
-        rect(0xf58343, 20, 0, 8, 12);
-        rect(0xf6f0df, 16, 20, 16, 8);
+    texture('cone', 64, 64, () => {
+        graphics.fillStyle(ink).fillTriangle(10, 50, 30, 5, 54, 50);
+        graphics.fillStyle(0xf57938).fillTriangle(16, 48, 30, 12, 48, 48);
+        rect(cream, 23, 29, 16, 5);
+        rect(cream, 19, 40, 24, 5);
+        box(0xe35632, 5, 47, 54, 12, 5);
     });
-    texture('robot', 48, 44, () => {
-        rect(0x19232c, 4, 8, 40, 36);
-        rect(0xd54c45, 8, 12, 32, 24);
-        rect(0x19232c, 12, 20, 24, 8);
-        rect(0xffd17a, 16, 20, 4, 4);
-        rect(0xffd17a, 28, 20, 4, 4);
-        rect(0xd54c45, 20, 0, 8, 8);
+    texture('robot', 64, 64, () => {
+        box(0x758b9d, 28, 5, 11, 18);
+        box(0xa6bac5, 6, 16, 52, 40);
+        box(0x3a4b61, 11, 25, 42, 17);
+        circle(0xff4f5a, 23, 33, 7);
+        circle(0xff4f5a, 41, 33, 7);
+        rect(cream, 24, 45, 16, 3);
+    });
+    texture('hydrant', 64, 64, () => {
+        box(0xe54e43, 9, 27, 46, 17);
+        box(0xf66543, 20, 16, 24, 38);
+        circle(0xffb375, 32, 19, 12);
+        box(0xc83739, 15, 47, 34, 12, 5);
+    });
+    texture('branch', 64, 64, () => {
+        box(0x805035, 12, 26, 43, 19);
+        circle(0x417955, 18, 25, 14);
+        circle(0x56956c, 33, 18, 15);
+        circle(0x397e60, 48, 24, 13);
+    });
+    texture('banner', 64, 64, () => {
+        box(0xcf4f41, 6, 14, 52, 38);
+        graphics.fillStyle(cream).fillTriangle(15, 21, 29, 21, 22, 43);
+        graphics.fillStyle(cream).fillTriangle(35, 21, 49, 21, 42, 43);
+    });
+    texture('sign', 64, 64, () => {
+        box(0xf7b951, 6, 10, 52, 45);
+        graphics.fillStyle(ink).fillTriangle(21, 34, 43, 34, 32, 45);
+        rect(ink, 29, 21, 6, 17);
     });
     texture('sky', WIDTH, HEIGHT, () => {
-        rect(0x31566b, 0, 0, WIDTH, HEIGHT);
-        rect(0x4e7e8f, 0, 244, WIDTH, 260);
-        rect(0x75a6aa, 0, 368, WIDTH, 176);
-        rect(0xffd17a, 424, 106, 68, 68);
-        for (const [x, y] of [[24, 164], [242, 108], [476, 225]]) {
-            rect(0xbad8d6, x, y, 112, 12);
-            rect(0xbad8d6, x + 24, y - 12, 60, 12);
+        for (let y = 0; y < HEIGHT; y += 4) {
+            const t = y / HEIGHT;
+            const rgb = [40 + 204 * t, 78 + 111 * t, 119 + 27 * t].map(Math.round);
+            rect((rgb[0] << 16) | (rgb[1] << 8) | rgb[2], 0, y, WIDTH, 4);
         }
-        for (const [x, y] of [[0, 420], [76, 388], [156, 432], [292, 404], [440, 420]]) {
-            rect(0x567d83, x, y, 160, 112);
-            rect(0x567d83, x + 28, y - 16, 96, 16);
+        graphics.fillStyle(0xffdeb0).fillCircle(463, 132, 49);
+        for (const [x, y] of [[0, 420], [76, 388], [156, 432], [292, 404], [440, 420], [572, 415]]) {
+            graphics.fillStyle(0x648a96).fillTriangle(x - 110, 552, x, y, x + 110, 552);
         }
-        rect(0x345862, 0, 516, WIDTH, GROUND - 516);
+        rect(0x476d73, 0, 540, WIDTH, GROUND - 540);
+    });
+    texture('clouds', WIDTH, HEIGHT, () => {
+        for (const [x, y] of [[60, 150], [290, 228], [505, 74]]) {
+            graphics.fillStyle(0xfaf1d6, 0.62).fillRoundedRect(x - 36, y, 102, 23, 11);
+            graphics.fillRoundedRect(x - 8, y - 12, 54, 26, 13);
+        }
     });
     texture('track', WIDTH, HEIGHT - GROUND + 24, () => {
         rect(0x58686f, 0, 0, WIDTH, 24);
@@ -186,11 +232,9 @@ function boot() {
             this.state = STATES.AWAITING_START;
             this.score = 0;
             this.elapsed = 0;
-            this.nextSpawn = SPAWN_MS;
-            this.spawnIndex = 0;
             this.store = null;
-            this.held = new Map();
             this.keys = new Set();
+            this.drag = null;
             this.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
             makeTextures(this);
             if (['idle-right', 'walk-right', 'idle-left', 'walk-left']
@@ -199,10 +243,10 @@ function boot() {
                 return;
             }
             if (this.loadFailures.size) return;
-            this.lot = this.add.tileSprite(0, 0, WIDTH, HEIGHT, 'sky').setOrigin(0);
+            this.add.image(0, 0, 'sky').setOrigin(0);
+            this.clouds = this.add.tileSprite(0, 0, WIDTH, HEIGHT, 'clouds').setOrigin(0);
             this.scenery = makeScenery(this);
             this.road = this.add.tileSprite(0, GROUND - 24, WIDTH, HEIGHT - GROUND + 24, 'track').setOrigin(0);
-            this.scroll = 0;
             for (const side of ['left', 'right']) {
                 const key = 'run-' + side;
                 if (!this.anims.exists(key)) this.anims.create({
@@ -212,28 +256,16 @@ function boot() {
                     repeat: -1
                 });
             }
-            const floor = this.add.zone(WIDTH / 2, GROUND + 16, WIDTH, 32);
-            this.physics.add.existing(floor, true);
-            this.physics.world.setBounds(0, 0, WIDTH, HEIGHT, true, true, true, false);
-            this.facing = 'right';
-            this.player = this.physics.add.sprite(104, GROUND - 32, 'taggy-idle-right', 0)
-                .setScale(0.5).setCollideWorldBounds(true).setDepth(2);
-            this.player.body.setSize(72, 120).setOffset(44, 16);
+            this.player = this.add.sprite(150, 400, 'taggy-idle-right', 0).setScale(0.5).setDepth(5);
             this.muted = true;
-            this.coffeeUntil = 0;
-            this.shield = false;
-            this.lastObstacle = -Infinity;
-            this.feedbackUntil = 0;
-            this.popup = this.add.text(0, 0, '', {
-                fontFamily: 'monospace', fontSize: '26px', fontStyle: 'bold',
-                color: '#fff6df', stroke: '#19232c', strokeThickness: 5
-            }).setOrigin(0.5).setDepth(3).setVisible(false);
-            this.tokens = this.physics.add.group({ allowGravity: false, maxSize: 8 });
-            this.obstacles = this.physics.add.group({ allowGravity: false, maxSize: 8 });
-            this.physics.add.collider(this.player, floor);
-            this.physics.add.overlap(this.player, this.tokens, (_, token) => this.collectPickup(token));
-            this.physics.add.overlap(this.player, this.obstacles, (_, obstacle) => this.hitObstacle(obstacle));
-            this.physics.pause();
+            this.best = readBest();
+            this.gates = [];
+            this.effects = [];
+            this.banner = this.add.text(WIDTH / 2, 100, '', {
+                fontFamily: 'monospace', fontStyle: 'bold', fontSize: '52px',
+                color: '#ffdf97', stroke: '#172635', strokeThickness: 10
+            }).setOrigin(0.5).setDepth(8).setVisible(false);
+            this.makeLegend();
             this.bindControls();
             this.renderState();
             if (!viewTracked) {
@@ -278,44 +310,35 @@ function boot() {
                 if (document.hidden && this.state === STATES.PLAYING) this.setRoundState(STATES.PAUSED);
             });
             on(window, 'blur', () => this.clearInput());
-            const gameplayKeys = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'Space'];
+            const gameplayKeys = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS'];
             on(document, 'keydown', (event) => {
-                if (this.state !== STATES.PLAYING || !gameplayKeys.includes(event.code)) return;
-                if (event.code === 'Space' && event.target.closest?.('button, a')) return;
+                if (this.state !== STATES.PLAYING || !gameplayKeys.includes(event.code)
+                    || event.ctrlKey || event.metaKey || event.altKey) return;
                 event.preventDefault();
                 this.keys.add(event.code);
-                if (!event.repeat && (event.code === 'ArrowUp' || event.code === 'Space')) this.jump();
             });
             on(document, 'keyup', (event) => this.keys.delete(event.code));
-            for (const id of ['left', 'right']) {
-                const button = byId(id);
-                on(button, 'pointerdown', (event) => {
-                    if (event.button !== 0 || this.state !== STATES.PLAYING) return;
-                    button.setPointerCapture(event.pointerId);
-                    this.held.set(event.pointerId, id);
+            const field = byId('playfield');
+            on(field, 'pointerdown', (event) => {
+                if (event.button !== 0 || this.drag || this.state !== STATES.PLAYING) return;
+                field.setPointerCapture(event.pointerId);
+                this.drag = { id: event.pointerId, x: event.clientX, y: event.clientY,
+                    targetX: this.player.x, targetY: this.player.y };
+            });
+            on(field, 'pointermove', (event) => {
+                if (this.drag?.id !== event.pointerId) return;
+                const rect = field.getBoundingClientRect();
+                const drag = this.drag;
+                drag.targetX = Phaser.Math.Clamp(drag.targetX + (event.clientX - drag.x) * WIDTH / rect.width, 35, WIDTH - 35);
+                drag.targetY = Phaser.Math.Clamp(drag.targetY + (event.clientY - drag.y) * HEIGHT / rect.height, 34, HEIGHT - 34);
+                drag.x = event.clientX;
+                drag.y = event.clientY;
+            });
+            for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+                on(field, event, (pointer) => {
+                    if (this.drag?.id === pointer.pointerId) this.drag = null;
                 });
-                for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) {
-                    on(button, event, (pointer) => this.held.delete(pointer.pointerId));
-                }
-                on(button, 'keydown', (event) => {
-                    if (event.code !== 'Space' && event.code !== 'Enter') return;
-                    event.preventDefault();
-                    this.keys.add(id);
-                });
-                on(button, 'keyup', (event) => {
-                    if (event.code === 'Space' || event.code === 'Enter') this.keys.delete(id);
-                });
-                on(button, 'blur', () => this.keys.delete(id));
             }
-            on(byId('jump'), 'pointerdown', (event) => {
-                if (event.button === 0) this.jump();
-            });
-            on(byId('jump'), 'click', (event) => {
-                if (event.detail === 0) this.jump();
-            });
-            on(byId('playfield'), 'pointerdown', (event) => {
-                if (event.button === 0) this.jump();
-            });
             for (const button of document.querySelectorAll('[data-store]')) {
                 on(button, 'click', () => this.selectStore(button.dataset.store));
             }
@@ -329,33 +352,56 @@ function boot() {
             });
         }
 
+        makeLegend() {
+            for (const [key, label] of [
+                ['coffee', 'Speed boost 5s'], ['spare_tire', 'Blocks 1 hit'],
+                ['marshmallow', 'Marshmallow +5'], ['mile-marker', 'Mile marker +10'],
+                ['cone', 'Cone ends run'], ['robot', 'Robot ends run']
+            ]) {
+                const item = document.createElement('li');
+                const icon = this.textures.get(key).getSourceImage();
+                const image = document.createElement('img');
+                image.src = icon.toDataURL();
+                image.alt = '';
+                item.append(image, label);
+                byId('legend').append(item);
+            }
+        }
+
         clearInput() {
             this.keys.clear();
-            this.held.clear();
+            const field = byId('playfield');
+            if (this.drag && field.hasPointerCapture(this.drag.id)) field.releasePointerCapture(this.drag.id);
+            this.drag = null;
         }
 
         start() {
             if (this.state !== STATES.AWAITING_START && this.state !== STATES.GAME_OVER) return;
+            for (const gate of this.gates) this.destroyGate(gate);
+            for (const effect of this.effects) effect.object.destroy();
+            this.gates = [];
+            this.effects = [];
             this.score = 0;
+            this.level = 1;
+            this.passed = 0;
             this.elapsed = 0;
-            this.nextSpawn = SPAWN_MS;
-            this.spawnIndex = 0;
             this.scroll = 0;
+            this.nextGate = 0;
+            this.gateIndex = 0;
             this.coffeeUntil = 0;
             this.shield = false;
-            this.lastObstacle = -Infinity;
-            this.feedbackUntil = 0;
-            this.popup.setVisible(false);
-            this.drawScenery();
-            this.tokens.clear(true, true);
-            this.obstacles.clear(true, true);
-            this.player.body.reset(104, GROUND - 100);
             this.facing = 'right';
-            this.drawTaggy('idle');
+            this.heading = 0;
+            this.crashUntil = 0;
+            this.flashUntil = 0;
+            this.bannerUntil = 0;
+            this.player.clearTint().setAngle(0).setPosition(150, 400);
+            this.drawTaggy(false);
+            this.banner.setVisible(false);
+            this.drawScenery();
             this.selectStore(null);
-            this.updateStats();
             this.setRoundState(STATES.PLAYING);
-            byId('playfield').tabIndex = -1;
+            this.updateStats();
             byId('playfield').focus({ preventScroll: true });
             track('game_start');
         }
@@ -363,42 +409,29 @@ function boot() {
         setRoundState(state) {
             this.state = state;
             this.clearInput();
-            if (state === STATES.PLAYING) {
-                this.physics.resume();
-                this.player.anims.resume();
-            } else {
-                this.physics.pause();
-                this.player.setVelocityX(0);
-                this.player.anims.pause();
-            }
+            if (state === STATES.PLAYING) this.player.anims.resume();
+            else this.player.anims.pause();
             this.renderState();
         }
 
         renderState() {
             const { AWAITING_START, PLAYING, PAUSED, GAME_OVER } = STATES;
-            const playing = this.state === PLAYING;
+            const intro = this.state === AWAITING_START;
             byId('start').disabled = false;
-            byId('start').hidden = this.state !== AWAITING_START;
-            byId('pause').hidden = !playing && this.state !== PAUSED;
+            byId('start').hidden = !intro;
+            byId('intro').hidden = !intro;
+            byId('pause').hidden = this.state !== PLAYING && this.state !== PAUSED;
             byId('pause').textContent = this.state === PAUSED ? 'Resume' : 'Pause';
-            byId('status').textContent = this.state === PAUSED ? 'Round paused. Select Resume to continue.' : '';
+            byId('status').textContent = this.state === PAUSED ? 'Run paused. Select Resume to continue.' : '';
             byId('result').hidden = this.state !== GAME_OVER;
             byId('game-area').hidden = this.state === GAME_OVER;
-            for (const id of ['left', 'right', 'jump']) byId(id).disabled = !playing;
-        }
-
-        jump() {
-            if (this.state !== STATES.PLAYING || !this.player.body.blocked.down || this.player.body.velocity.y < 0) return;
-            this.player.setVelocityY(-JUMP_SPEED);
-            this.drawTaggy('jump');
         }
 
         updateStats() {
             byId('score').textContent = this.score;
-            const seconds = Math.ceil((ROUND_MS - this.elapsed) / 1000);
-            if (byId('time').textContent !== String(seconds)) byId('time').textContent = seconds;
+            byId('level').textContent = this.level;
             const remaining = Math.max(0, Math.ceil((this.coffeeUntil - this.elapsed) / 1000));
-            const effects = [remaining && 'Coffee ' + remaining + 's', this.shield && 'Spare tire ready']
+            const effects = [remaining && 'Coffee ' + remaining + 's · x2', this.shield && 'Spare tire ready']
                 .filter(Boolean).join(' · ');
             const indicator = byId('effects');
             if (indicator.textContent !== effects) indicator.textContent = effects;
@@ -407,120 +440,250 @@ function boot() {
 
         update(_, delta) {
             if (this.state !== STATES.PLAYING) return;
-            const step = Math.min(delta, 50);
-            this.elapsed = Math.min(ROUND_MS, this.elapsed + step);
+            // Small substeps keep collision and gate crossings reliable on slow frames.
+            let remaining = Math.min(delta, 64);
+            while (remaining > 0 && this.state === STATES.PLAYING) {
+                const step = Math.min(remaining, 8);
+                this.advance(step);
+                remaining -= step;
+            }
+            if (this.state !== STATES.PLAYING) return;
+            this.drawScenery();
             this.updateStats();
-            if (this.elapsed >= ROUND_MS) {
-                this.finish();
+            this.updateEffects();
+        }
+
+        advance(step) {
+            this.elapsed += step;
+            const dt = step / 1000;
+            if (this.crashUntil) {
+                if (this.elapsed >= this.crashUntil) this.finish();
                 return;
             }
-            if (!this.reducedMotion.matches) {
-                this.scroll += LOT_SPEED * step / 1000;
-                this.drawScenery();
+            this.steer(dt);
+            const { speed, opening, spacing } = difficulty(this.level);
+            const distance = speed * dt;
+            this.scroll += distance;
+            if (this.scroll >= this.nextGate) {
+                this.spawnGate(opening);
+                this.nextGate = this.scroll + spacing;
             }
-            const touch = [...this.held.values()];
-            const left = this.keys.has('ArrowLeft') || this.keys.has('left') || touch.includes('left');
-            const right = this.keys.has('ArrowRight') || this.keys.has('right') || touch.includes('right');
-            const direction = Number(right) - Number(left);
-            if (direction) this.facing = direction < 0 ? 'left' : 'right';
-            const boost = this.elapsed < this.coffeeUntil ? COFFEE_SPEED_MULTIPLIER : 1;
-            this.player.setVelocityX(direction * MOVE_SPEED * boost);
-            if (this.elapsed >= this.feedbackUntil) this.popup.setVisible(false);
-            const grounded = this.player.body.blocked.down && this.player.body.velocity.y >= 0;
-            this.drawTaggy(grounded ? (this.reducedMotion.matches ? 'idle' : 'run') : 'jump');
-            for (const group of [this.tokens, this.obstacles]) {
-                for (const item of group.getChildren()) {
-                    if (item.active && item.x < -32) item.disableBody(true, true);
+            for (const gate of this.gates) {
+                gate.view.x -= distance;
+                this.checkGate(gate);
+                if (this.crashUntil) break;
+            }
+            this.gates = this.gates.filter((gate) => {
+                if (gate.view.x > -GATE_WIDTH) return true;
+                this.destroyGate(gate);
+                return false;
+            });
+        }
+
+        steer(dt) {
+            const key = (a, b) => Number(this.keys.has(a) || this.keys.has(b));
+            let x = key('ArrowRight', 'KeyD') - key('ArrowLeft', 'KeyA');
+            let y = key('ArrowDown', 'KeyS') - key('ArrowUp', 'KeyW');
+            const speed = MOVE_SPEED * (this.elapsed < this.coffeeUntil ? COFFEE_SPEED_MULTIPLIER : 1);
+            let travel = speed * dt;
+            if (this.drag) {
+                x = this.drag.targetX - this.player.x;
+                y = this.drag.targetY - this.player.y;
+                travel = Math.min(travel, Math.hypot(x, y));
+            }
+            const length = Math.hypot(x, y);
+            if (length > 0.001) {
+                this.player.x = Phaser.Math.Clamp(this.player.x + travel * x / length, 35, WIDTH - 35);
+                this.player.y = Phaser.Math.Clamp(this.player.y + travel * y / length, 34, HEIGHT - 34);
+            }
+            if (Math.abs(x) > 0.1) {
+                const heading = Math.sign(x);
+                if (this.heading && heading !== this.heading && !this.reducedMotion.matches) {
+                    this.addEffect(this.add.circle(this.player.x - heading * 23, this.player.y + 22, 9, 0xf4dab5), 290, 18);
                 }
+                this.heading = heading;
+                this.facing = x < 0 ? 'left' : 'right';
             }
-            if (this.elapsed >= this.nextSpawn) {
-                this.spawn();
-                this.nextSpawn += SPAWN_MS;
-            }
+            const tilt = length > 0.001 ? Phaser.Math.Clamp(y / length * 9 + x / length * 4, -12, 12) : 0;
+            this.player.setAngle(this.reducedMotion.matches ? 0 : tilt);
+            this.drawTaggy(length > 0.001);
         }
 
         drawScenery() {
-            this.lot.tilePositionX = this.scroll * 0.08;
-            this.road.tilePositionX = this.scroll;
+            const scroll = this.reducedMotion.matches ? 0 : this.scroll;
+            this.clouds.tilePositionX = scroll * 0.10;
+            this.road.tilePositionX = scroll;
             for (const { image, x, speed } of this.scenery) {
-                image.x = x - (this.scroll * speed) % WIDTH;
+                image.x = x - (scroll * speed) % WIDTH;
             }
         }
 
-        drawTaggy(pose) {
-            if (pose === 'run') {
+        drawTaggy(moving) {
+            if (moving && !this.reducedMotion.matches) {
                 this.player.play('run-' + this.facing, true);
                 return;
             }
-            const key = 'taggy-' + (pose === 'jump' ? 'walk' : 'idle') + '-' + this.facing;
-            const frame = pose === 'jump' ? 1 : 0;
-            if (this.player.texture.key !== key || this.player.frame.name !== frame || this.player.anims.isPlaying) {
+            const key = 'taggy-idle-' + this.facing;
+            if (this.player.texture.key !== key || this.player.anims.isPlaying) {
                 this.player.anims.stop();
-                this.player.setTexture(key, frame);
+                this.player.setTexture(key, 0);
             }
         }
 
-        spawn() {
-            const key = SPAWN_PATTERN[this.spawnIndex++ % SPAWN_PATTERN.length];
-            const isObstacle = OBSTACLES.has(key);
-            if (isObstacle && this.elapsed < this.coffeeUntil
-                && this.elapsed - this.lastObstacle < COFFEE_OBSTACLE_GAP) return;
-            const group = isObstacle ? this.obstacles : this.tokens;
-            const y = GROUND - (isObstacle ? 22 : 32);
-            const item = group.getFirstDead(true, WIDTH + 32, y, key);
-            if (!item) return;
-            item.setTexture(key).enableBody(true, WIDTH + 32, y, true, true).setDepth(1);
-            if (isObstacle) {
-                item.body.setSize(32, 36).setOffset(8, 8);
-                this.lastObstacle = this.elapsed;
-            }
-            item.setVelocityX(-LOT_SPEED);
+        spawnGate(opening) {
+            const index = this.gateIndex++;
+            const center = CENTERS[index % CENTERS.length];
+            const top = center - opening / 2;
+            const bottom = center + opening / 2;
+            const view = this.add.container(WIDTH + GATE_WIDTH / 2, 0).setDepth(3);
+            const high = HIGH_HAZARDS[index % HIGH_HAZARDS.length];
+            const low = LOW_HAZARDS[index % LOW_HAZARDS.length];
+            const hazards = [
+                this.makeHazard(view, 0, top, high, true),
+                this.makeHazard(view, bottom, HEIGHT, low, false)
+            ];
+            const key = index % 13 === 8 ? 'spare_tire' : index % 7 === 3 ? 'coffee'
+                : index % 2 ? 'mile-marker' : 'marshmallow';
+            const pickup = this.add.image(0, center, key).setScale(0.76);
+            view.add(pickup);
+            this.gates.push({ view, center, hazards, pickup, passed: false, close: false, hit: false });
         }
 
-        collectPickup(item) {
-            if (this.state !== STATES.PLAYING || !item.active) return;
-            const key = item.texture.key;
-            item.disableBody(true, true);
+        makeHazard(view, top, bottom, key, high) {
+            const graphic = this.add.graphics();
+            const left = -GATE_WIDTH / 2;
+            const height = bottom - top;
+            const cap = high ? bottom - 10 : top + 10;
+            graphic.fillStyle(0x172635).fillRoundedRect(left, top, GATE_WIDTH, height, 12);
+            graphic.fillStyle(high ? 0x2c4654 : 0x3a4c58).fillRoundedRect(left + 4, top + 4, GATE_WIDTH - 8, height - 8, 9);
+            for (let y = top + 24; y < bottom - 22; y += 28) {
+                graphic.fillStyle(0x56717a, 0.38).fillRoundedRect(left + 11, y, GATE_WIDTH - 22, 3, 1);
+            }
+            graphic.fillStyle(0xf0a35c).fillRoundedRect(left + 8, cap - 3, GATE_WIDTH - 16, 6, 3);
+            const icon = this.add.image(0, high ? bottom - 42 : top + 43, key);
+            const scale = Math.min(76 / icon.width, 65 / icon.height);
+            icon.setScale(scale);
+            view.add([graphic, icon]);
+            return { graphic, icon, top, bottom, alive: true };
+        }
+
+        destroyGate(gate) {
+            gate.view.destroy();
+        }
+
+        checkGate(gate) {
+            const { x, y } = this.player;
+            const horizontal = Math.abs(x - gate.view.x);
+            const reach = PLAYER_HALF_WIDTH + GATE_WIDTH / 2;
+            if (horizontal < reach) {
+                for (const hazard of gate.hazards) {
+                    if (!hazard.alive) continue;
+                    const clearance = y < hazard.top ? hazard.top - y - PLAYER_HALF_HEIGHT
+                        : y > hazard.bottom ? y - hazard.bottom - PLAYER_HALF_HEIGHT : -1;
+                    if (clearance <= 0) {
+                        this.hitObstacle(gate, hazard);
+                        if (this.crashUntil) return;
+                    } else if (clearance <= 15) gate.close = true;
+                }
+            }
+            if (gate.pickup.visible && horizontal < PLAYER_HALF_WIDTH + 20 && Math.abs(y - gate.center) < PLAYER_HALF_HEIGHT + 20) {
+                this.collectPickup(gate);
+            }
+            // Count only when the gate has cleared Taggy and cannot still be ahead of his left bound.
+            if (!gate.passed && gate.view.x + reach < x && gate.view.x + GATE_WIDTH / 2 < 35 - PLAYER_HALF_WIDTH) {
+                gate.passed = true;
+                this.passed += 1;
+                if (!gate.hit) {
+                    this.addScore(10);
+                    if (gate.close) {
+                        const bonus = this.addScore(5);
+                        this.showFeedback('✦ CLOSE! +' + bonus, x, y, '#fff1a8');
+                    }
+                }
+                if (this.passed % GAPS_PER_LEVEL === 0) {
+                    this.level += 1;
+                    this.banner.setText('LEVEL ' + this.level).setVisible(true);
+                    this.bannerUntil = this.elapsed + 1100;
+                }
+            }
+        }
+
+        addScore(points) {
+            const amount = points * (this.elapsed < this.coffeeUntil ? 2 : 1);
+            this.score += amount;
+            return amount;
+        }
+
+        collectPickup(gate) {
+            const key = gate.pickup.texture.key;
+            gate.pickup.setVisible(false);
+            let type = 'score';
+            let label;
             if (key === 'coffee') {
                 this.coffeeUntil = this.elapsed + COFFEE_MS;
-                this.showFeedback('Coffee boost');
+                type = 'coffee';
+                label = 'BOOST!';
             } else if (key === 'spare_tire') {
                 this.shield = true;
-                this.showFeedback('Spare tire ready');
+                type = 'spare_tire';
+                label = 'SHIELD!';
             } else {
-                this.score += 10;
-                this.showFeedback('+10');
+                label = '+' + this.addScore(key === 'marshmallow' ? 5 : 10);
             }
-            const type = key === 'coffee' || key === 'spare_tire' ? key : 'score';
+            this.showFeedback(label, gate.view.x, gate.center);
             this.playPickupSound(type);
             track('pickup_collect', { type });
-            this.updateStats();
         }
 
-        hitObstacle(item) {
-            if (this.state !== STATES.PLAYING || !item.active) return;
-            item.disableBody(true, true);
+        hitObstacle(gate, hazard) {
+            gate.hit = true;
+            this.playPickupSound('crash');
             if (this.shield) {
                 this.shield = false;
-                this.showFeedback('Shield used');
+                hazard.alive = false;
+                hazard.graphic.destroy();
+                hazard.icon.destroy();
+                this.showFeedback('SHIELD USED', this.player.x, this.player.y);
+                this.flashUntil = this.elapsed + 145;
             } else {
-                const penalty = Math.min(5, this.score);
-                this.score -= penalty;
-                this.showFeedback(penalty ? '-' + penalty : 'Hit');
+                this.crashUntil = this.elapsed + 220;
+                this.clearInput();
+                this.player.anims.pause();
             }
-            this.updateStats();
+            if (!this.reducedMotion.matches) this.player.setTint(0xff8267);
         }
 
-        showFeedback(label) {
-            this.popup.setText(label)
-                .setPosition(Phaser.Math.Clamp(this.player.x, 110, WIDTH - 110), this.player.y - 54)
-                .setVisible(true);
-            this.feedbackUntil = this.elapsed + 900;
+        showFeedback(label, x, y, color = '#fff6df') {
+            const popup = this.add.text(Phaser.Math.Clamp(x, 100, WIDTH - 100), Math.max(45, y - 22), label, {
+                fontFamily: 'monospace', fontSize: '25px', fontStyle: 'bold',
+                color, stroke: '#172635', strokeThickness: 6
+            }).setOrigin(0.5);
+            this.addEffect(popup, 850, 32);
+        }
+
+        addEffect(object, duration, rise) {
+            object.setDepth(7);
+            this.effects.push({ object, start: this.elapsed, duration, rise, y: object.y });
+        }
+
+        updateEffects() {
+            if (this.elapsed >= this.bannerUntil) this.banner.setVisible(false);
+            if (this.elapsed >= this.flashUntil && !this.crashUntil) this.player.clearTint();
+            this.effects = this.effects.filter(({ object, start, duration, rise, y }) => {
+                const progress = (this.elapsed - start) / duration;
+                if (progress >= 1) {
+                    object.destroy();
+                    return false;
+                }
+                if (!this.reducedMotion.matches) object.y = y - progress * rise;
+                object.alpha = 1 - Math.max(0, progress - 0.45) / 0.55;
+                return true;
+            });
         }
 
         playPickupSound(type) {
             if (this.muted || this.audio?.state !== 'running') return;
-            const notes = { score: [620, 830], coffee: [420, 630, 940], spare_tire: [330, 440, 550] };
+            const notes = { score: [620, 830], coffee: [420, 630, 940], spare_tire: [330, 440, 550], crash: [145, 80] };
             notes[type].forEach((frequency, index) => {
                 const start = this.audio.currentTime + index * 0.08;
                 const tone = this.audio.createOscillator();
@@ -535,13 +698,21 @@ function boot() {
         }
 
         finish() {
-            const won = this.score >= WIN_SCORE;
-            byId('final-score').textContent = 'Final score: ' + this.score;
-            byId('outcome').textContent = won ? 'You reached the target!' : 'You fell short of 50 points. Give it another run!';
+            this.best = { score: Math.max(this.best.score, this.score), level: Math.max(this.best.level, this.level) };
+            try {
+                localStorage.setItem(BEST_KEY, JSON.stringify(this.best));
+            } catch {
+                // Keep the session best even when storage is blocked.
+            }
+            byId('final-score').textContent = 'Score ' + this.score + ' · Level ' + this.level;
+            byId('outcome').textContent = 'Best score ' + this.best.score + ' · Best level ' + this.best.level;
             this.setRoundState(STATES.GAME_OVER);
             byId('effects').hidden = true;
             byId('result-title').focus();
-            track('game_complete', { result: won ? 'win' : 'lose', score: this.score, duration_seconds: ROUND_MS / 1000 });
+            track('game_complete', {
+                result: 'crash', score: this.score, level: this.level,
+                duration_seconds: Math.round((this.elapsed - 220) / 1000)
+            });
         }
 
         selectStore(store) {
@@ -571,7 +742,6 @@ function boot() {
         parent: 'playfield',
         scale: { mode: Phaser.Scale.NONE },
         pixelArt: true,
-        physics: { default: 'arcade', arcade: { gravity: { y: GRAVITY } } },
         scene: DashScene
     });
 }
