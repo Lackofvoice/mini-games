@@ -11,7 +11,7 @@ const GATE_WIDTH = 96;
 const PLAYER_HALF_WIDTH = 23;
 const PLAYER_HALF_HEIGHT = 27;
 const BEST_KEY = 'rv-dash-best-v3';
-const CENTERS = [400, 325, 460, 350, 480, 405, 300, 445, 345, 490, 370, 455];
+const CENTERS = [400, 325, 525, 350, 495, 405, 270, 445, 345, 520, 370, 455];
 const LOW_HAZARDS = ['cone', 'robot', 'hydrant', 'lite_tt_v2', 'generic_bunkhouse_fifth_wheel_teal'];
 const HIGH_HAZARDS = ['branch', 'banner', 'sign'];
 
@@ -590,7 +590,7 @@ function boot() {
                 this.collectPickup(gate);
             }
             // Count only when the gate has cleared Taggy and cannot still be ahead of his left bound.
-            if (!gate.passed && gate.view.x + reach < x && gate.view.x + GATE_WIDTH / 2 < 35 - PLAYER_HALF_WIDTH) {
+            if (!gate.passed && gate.view.x + GATE_WIDTH / 2 < 35 - PLAYER_HALF_WIDTH) {
                 gate.passed = true;
                 this.passed += 1;
                 if (!gate.hit) {
@@ -598,6 +598,9 @@ function boot() {
                     if (gate.close) {
                         const bonus = this.addScore(5);
                         this.showFeedback('✦ CLOSE! +' + bonus, x, y, '#fff1a8');
+                        if (!this.reducedMotion.matches) {
+                            this.addEffect(this.add.star(x + 26, y - 14, 4, 3, 12, 0xffe39a), 420, 30);
+                        }
                     }
                 }
                 if (this.passed % GAPS_PER_LEVEL === 0) {
