@@ -1,11 +1,11 @@
 # DONE
 
-Official Taggy sheets and Sim Lab parallax scenery shipped in daf3a96e0ca6303c04878b8df92cd5cc37b6c937. RV score pickups, five-second coffee boost, spare tire shield, feedback and opt-in sound shipped in dd34bd3d9bee823f4041e4e5db46c2d2b7237c6c. Edge checks and remaining coverage are in VERIFY.md.
+Phase 3 gameplay is in 4a5c38b2fda02bc1dfccea398c9940e0595350fd. Beginner-route tuning is in 4ee644a1a602bdf04973552716f8e9fabbfd5cb4. Embedded PNGs and the regenerating script are in 1be4eee3e1a45558d5d3039afb34e0197498ff9b.
 
 # NEXT STEP
 
-Run the Phase 2 manual verification on a physical phone, including pickup sound and real tab switching.
+Play the beginner route on a physical phone and check thumb steering, sound and difficulty.
 
 # OPEN ISSUES
 
-Physical-device touch, actual OS tab switching, full keyboard focus traversal and assistive technology remain unverified. No additional art is required. Taggy's key image is archived and unused in gameplay. Phaser still requires CDN access or a browser cache.
+Physical-device touch, audible sound, full keyboard focus traversal and screen-reader operation remain unverified. Phaser needs internet access or a browser cache.

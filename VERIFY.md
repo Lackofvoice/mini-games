@@ -55,3 +55,20 @@ Tested on Windows using headless Edge and the same loopback server and CDP setup
 | P2-R5 | Browser gtag, standalone dataLayer and absent hooks | PASS | All five Phase 1 event names fired. Starts and completions matched three rounds. Standalone dataLayer received pickup_collect with only event, game_name and type. Gameplay also worked without either hook. | Vendor delivery was not tested. |
 | P2-R6 | Browser runtime and blocked CDN | PASS | No uncaught runtime errors in the Phase 2 checks. Blocking Phaser displayed recovery text. | Browser and screen-reader coverage beyond Edge remains pending. |
 | P2-R7 | Physical-device and OS checks | NOT TESTED | Physical touch, real tab switching, keyboard focus traversal and assistive technology require a manual pass. | Use the manual follow-up above and verify both pickup sounds after opting in. |
+
+## Phase 3 verification
+
+Windows Explorer double-click opened the checkout in the default Comet browser. The address and accessibility tree showed the file URL. The start screen rendered Taggy, RVs, trees, road, and six legend icons with no status error. The run advanced through scrolling gates and reached the result screen. Headless Edge 157 independently tested the same file URL and loopback HTTP. A later visible Edge UI inspection stopped when Computer Use could not verify the browser URL.
+
+| Check | Status | Evidence and limits |
+| --- | --- | --- |
+| Explorer double-click and file-mode gameplay | PASS | Actual Explorer double-click opened Comet. Edge CDP also started, steered, leveled up and completed a run from the tuned file URL. |
+| Embedded art and loader diagnostics | PASS | Nine source PNGs reproduce the checked-in bundle. The browser displayed the scene and a deliberately corrupt Taggy sheet named taggy-walk-left in the error line. |
+| Eight-way steering and ramp | PASS | Edge exercised the four diagonals and four cardinal directions. Steering through eight live gates reached Level 2 and 165 points. Speed rose from 148 to 161.32 logical px/s, opening shrank from 292 to 280 px, and spacing fell from 334 to 324 px. The tuned beginner route crashes an idle player at gate three after two forgiving gaps. |
+| Crash, replay and saved records | PASS | A live crash ended the run and focused the result. Replay reset score, level, effects and store. Best score and level survived reload. |
+| Coffee and spare tire | PASS | Browser collision probes confirmed five active seconds, 35% faster steering, doubled points and expiry. The shield destroyed one hazard, and the next hit ended the run. Targeted probes repositioned objects to isolate effects. |
+| Pickups and close-call feedback | PASS | Live play showed +5, +10 and BOOST! popups. Collision probes showed SHIELD! and CLOSE! +5, including the close-pass sparkle implementation. |
+| 360 px touch and reduced motion | PASS | Edge touch emulation moved Taggy diagonally and stopped on release. Legend fit without horizontal overflow. Decorative scenery and tilt were held under reduced motion. |
+| Pause, visibility and store routing | PASS | Pause froze scrolling and the active clock. Returning after a simulated hidden event required explicit resume. Both approved CTA hrefs were selected in turn, and the CTA reset on replay. |
+| Analytics, branding and audio default | PASS | Browser checks observed the view, run, pickup, store and CTA paths. Three crash results emitted three completion events. The game started muted and also ran without analytics. The intro and result contained no form or dealership reward. |
+| Physical and cross-browser checks | NOT TESTED | Physical touch, audible crash and pickup sounds, full keyboard focus traversal and screen-reader operation were not verified. |
