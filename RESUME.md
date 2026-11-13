@@ -1,11 +1,11 @@
 # DONE
 
-RV Dash runs locally with procedural Taggy art, a static ground collider, keyboard and touch controls, pause and replay, a store-specific inventory link, and optional host analytics. Verified build: d690e8c263e94cd503de582b850d43d169037409 on the remote repair branch.
+Official Taggy sheets and Sim Lab parallax scenery shipped in daf3a96e0ca6303c04878b8df92cd5cc37b6c937. RV score pickups, five-second coffee boost, spare tire shield, feedback and opt-in sound shipped in dd34bd3d9bee823f4041e4e5db46c2d2b7237c6c. Edge checks and remaining coverage are in VERIFY.md.
 
 # NEXT STEP
 
-Run the physical-phone and keyboard-focus checks in VERIFY.md.
+Run the Phase 2 manual verification on a physical phone, including pickup sound and real tab switching.
 
 # OPEN ISSUES
 
-The official Taggy sprite sheet is pending. Real-device touch, actual OS tab switching, full keyboard focus traversal and standalone dataLayer fallback remain unverified. The game needs cached or reachable Phaser 3.80.1.
+Physical-device touch, actual OS tab switching, full keyboard focus traversal and assistive technology remain unverified. No additional art is required. Taggy's key image is archived and unused in gameplay. Phaser still requires CDN access or a browser cache.
