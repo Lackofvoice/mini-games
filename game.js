@@ -162,15 +162,23 @@ function boot() {
 
     class DashScene extends Phaser.Scene {
         preload() {
-            for (const [side, suffix] of [['right', ''], ['left', '_l']]) {
+            const assets = window.RV_DASH_EMBEDDED || {};
+            this.loadFailures = new Set();
+            const fail = (key) => {
+                this.loadFailures.add(key);
+                byId('status').textContent = 'Could not load: ' + [...this.loadFailures].join(', ');
+            };
+            this.load.on('loaderror', ({ key }) => fail(key));
+            for (const side of ['right', 'left']) {
                 for (const pose of ['idle', 'walk']) {
-                    this.load.spritesheet('taggy-' + pose + '-' + side,
-                        'game_assets/taggy/taggy_' + pose + suffix + '.png',
-                        { frameWidth: 160, frameHeight: 144 });
+                    const key = 'taggy-' + pose + '-' + side;
+                    if (!assets[key]) fail(key);
+                    else this.load.spritesheet(key, assets[key], { frameWidth: 160, frameHeight: 144 });
                 }
             }
             for (const key of new Set(SCENERY.map(([name]) => name))) {
-                this.load.image(key, 'game_assets/simlab/' + key + '.png');
+                if (!assets[key]) fail(key);
+                else this.load.image(key, assets[key]);
             }
         }
 
@@ -187,9 +195,10 @@ function boot() {
             makeTextures(this);
             if (['idle-right', 'walk-right', 'idle-left', 'walk-left']
                 .some((pose) => !this.textures.exists('taggy-' + pose))) {
-                byId('status').textContent = 'Taggy could not load. Refresh to try again.';
+                if (!this.loadFailures.size) byId('status').textContent = 'Taggy could not load. Refresh to try again.';
                 return;
             }
+            if (this.loadFailures.size) return;
             this.lot = this.add.tileSprite(0, 0, WIDTH, HEIGHT, 'sky').setOrigin(0);
             this.scenery = makeScenery(this);
             this.road = this.add.tileSprite(0, GROUND - 24, WIDTH, HEIGHT - GROUND + 24, 'track').setOrigin(0);
