@@ -173,6 +173,7 @@ function boot() {
             on(byId('replay'), 'click', () => this.start());
             on(byId('pause'), 'click', () => {
                 this.setRoundState(this.state === STATES.PLAYING ? STATES.PAUSED : STATES.PLAYING);
+                if (this.state === STATES.PLAYING) byId('playfield').focus({ preventScroll: true });
             });
             on(document, 'visibilitychange', () => {
                 if (document.hidden && this.state === STATES.PLAYING) this.setRoundState(STATES.PAUSED);
@@ -368,7 +369,7 @@ function boot() {
         }
     }
 
-    new Phaser.Game({
+    return new Phaser.Game({
         type: Phaser.AUTO,
         width: WIDTH,
         height: HEIGHT,
@@ -380,4 +381,4 @@ function boot() {
     });
 }
 
-boot();
+const game = boot();
