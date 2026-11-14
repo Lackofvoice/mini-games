@@ -10,7 +10,10 @@ const FALL_CAP = 330; // natural logical px/s
 const ASSISTED_FALL_CAP = 346; // logical px/s, about 5% above natural
 const DESCENT_BONUS = GRAVITY * 0.08; // logical px/s², added to gravity
 const CEILING_Y = 36;
-const FLOOR_Y = GROUND - 32;
+const ROAD_LANES = [633, 688, 743];
+const FLOOR_Y = ROAD_LANES[1];
+const LANE_KEYS = { KeyQ: -1, KeyE: 1 };
+const LANE_SCALE = [.9, 1, 1.1];
 const START_X = 150;
 const EDGE_MARGIN = 54;
 const MOVE_SPEED = 245;
@@ -305,14 +308,18 @@ function makeTextures(scene) {
             rect(0x393b47, x + 72, 110, 27, 2);
         }
     });
-    texture('track', WIDTH, HEIGHT - GROUND + 24, () => {
-        rect(0x67615e, 0, 0, WIDTH, 24);
-        rect(0xbbb0a5, 0, 24, WIDTH, 5);
-        rect(0x302e2d, 0, 29, WIDTH, HEIGHT - GROUND - 5);
-        for (const x of [0, 200, 400]) {
-            rect(0xb7aaa0, x, 104, 96, 6);
-            rect(0x494441, x + 20, 66, 44, 2);
-            rect(0x494441, x + 128, 134, 24, 2);
+    texture('track', WIDTH, HEIGHT - GROUND + 58, () => {
+        rect(0x373841, 0, 0, WIDTH, HEIGHT - GROUND + 58);
+        rect(0x827b7c, 0, 0, WIDTH, 5);
+        rect(0x514d54, 0, 5, WIDTH, 6);
+        rect(0x706a70, 0, 201, WIDTH, 5);
+        for (let x = 0; x < WIDTH; x += 100) {
+            rect(0xbab1a1, x + 7, 54, 51, 3);
+            rect(0x918e90, x + 7, 109, 65, 4);
+            rect(0x66646b, x + 18, 33, 6, 2);
+            rect(0x494650, x + 53, 85, 11, 2);
+            rect(0x66646b, x + 75, 135, 4, 2);
+            rect(0x484651, x + 26, 168, 7, 2);
         }
     });
     graphics.destroy();
@@ -413,7 +420,7 @@ function boot() {
             this.layerReadout = this.add.text(8, 8, '', { fontFamily: 'monospace', fontSize: '17px',
                 backgroundColor: '#14151b', color: '#ffffff', padding: { x: 6, y: 5 } }).setDepth(20).setVisible(false);
             this.scenery = makeScenery(this);
-            this.road = this.add.tileSprite(0, GROUND - 24, WIDTH, HEIGHT - GROUND + 24, 'track').setOrigin(0).setDepth(2);
+            this.road = this.add.tileSprite(0, GROUND - 58, WIDTH, HEIGHT - GROUND + 58, 'track').setOrigin(0).setDepth(2);
             for (const [key, [, , , count, fps]] of Object.entries(SPRITES)) {
                 if (fps && this.textures.get(key).getFrameNames().length >= count && !this.anims.exists(key)) {
                     this.anims.create({
@@ -422,6 +429,7 @@ function boot() {
                     });
                 }
             }
+            this.playerShadow = this.add.ellipse(START_X, FLOOR_Y + 28, 61, 15, 0x13131c, .42).setDepth(2.7);
             this.player = this.add.sprite(START_X, FLOOR_Y, 'taggy-idle-right', 0).setScale(0.5).setDepth(5);
             this.muted = true;
             this.leaderboard = window.RVLeaderboard.attach('rv-dash');
@@ -483,6 +491,15 @@ function boot() {
                 const { code } = event;
                 if (event.ctrlKey || event.metaKey || event.altKey || this.loadFailures.size) return;
                 if (event.target.closest('input, select, textarea, [contenteditable], dialog')) return;
+                if (Object.hasOwn(LANE_KEYS, code)) {
+                    if (this.state !== STATES.PLAYING || this.crashUntil || event.target !== byId('playfield')) return;
+                    event.preventDefault();
+                    if (!event.repeat && this.player.y >= ROAD_LANES[this.roadLane]) {
+                        this.roadLane = Phaser.Math.Clamp(this.roadLane + LANE_KEYS[code], 0, ROAD_LANES.length - 1);
+                        this.player.y = ROAD_LANES[this.roadLane];
+                    }
+                    return;
+                }
                 if (code === 'ArrowDown') {
                     if (this.state !== STATES.PLAYING || this.crashUntil || event.target !== byId('playfield')) return;
                     event.preventDefault();
@@ -646,6 +663,7 @@ function boot() {
             this.flashUntil = 0;
             this.bannerUntil = 0;
             this.verticalSpeed = 0;
+            this.roadLane = 1;
             this.nextExhaust = 0;
             this.idleLine = 0;
             this.player.anims.stop();
@@ -657,6 +675,7 @@ function boot() {
             this.nextTrail = 0;
             this.drawScenery();
             this.drawSpeedFX();
+            this.drawRoadPosition();
             this.selectStore(null);
             this.setRoundState(STATES.PLAYING);
             this.speak("Price Right. Let's roll.");
@@ -727,6 +746,7 @@ function boot() {
             if (this.state !== STATES.PLAYING) return;
             this.drawScenery();
             this.drawSpeedFX();
+            this.drawRoadPosition();
             this.updateStats();
             this.updateEffects();
             this.updateSpeech();
@@ -814,9 +834,10 @@ function boot() {
                 -RISE_CAP, assist ? ASSISTED_FALL_CAP : FALL_CAP);
             const previousY = this.player.y;
             const y = previousY + this.verticalSpeed * dt;
-            this.player.y = Phaser.Math.Clamp(y, CEILING_Y, FLOOR_Y);
+            const floor = ROAD_LANES[this.roadLane];
+            this.player.y = Phaser.Math.Clamp(y, CEILING_Y, floor);
             if (y !== this.player.y) {
-                if (y > FLOOR_Y && previousY < FLOOR_Y) this.landedAt = this.elapsed;
+                if (y > floor && previousY < floor) this.landedAt = this.elapsed;
                 this.verticalSpeed = 0;
             }
             const reduced = this.reducedMotion.matches;
@@ -826,11 +847,21 @@ function boot() {
             }
             const tilt = this.verticalSpeed / RISE_CAP * 9;
             this.player.setAngle(reduced ? 0 : this.player.angle + (tilt - this.player.angle) * (1 - Math.exp(-13 * dt)));
-            const squash = reduced || this.player.y < FLOOR_Y ? 0 : Math.max(0, 1 - (this.elapsed - this.landedAt) / 145) * 0.13;
+            const squash = reduced || this.player.y < floor ? 0 : Math.max(0, 1 - (this.elapsed - this.landedAt) / 145) * 0.13;
             this.drawTaggy(thrusting);
             const scale = ['taggy-fly', 'taggy-shoot', 'taggy-hit'].includes(this.player.texture.key) ? 1 : 0.5;
             const landing = scale === 1 ? 0 : squash;
-            this.player.setScale(scale * (1 + landing), scale * (1 - landing));
+            const perspective = LANE_SCALE[this.roadLane];
+            this.player.setScale(scale * (1 + landing) * perspective, scale * (1 - landing) * perspective);
+        }
+
+        drawRoadPosition() {
+            const floor = ROAD_LANES[this.roadLane];
+            const altitude = floor - this.player.y;
+            this.playerShadow.setPosition(this.player.x, floor + 29)
+                .setAlpha(Math.max(.14, .48 - altitude / 650))
+                .setScale(LANE_SCALE[this.roadLane] * Math.max(.55, 1 - altitude / 740));
+            this.player.setDepth(altitude > 40 ? 5 : 3 + (this.roadLane + .5) / 3);
         }
 
         resetSky() {
@@ -924,7 +955,7 @@ function boot() {
 
         drawTaggy(thrusting) {
             if (this.elapsed < this.hitPoseUntil) return;
-            const airborne = this.player.y < FLOOR_Y;
+            const airborne = this.player.y < ROAD_LANES[this.roadLane ?? 1];
             let key = airborne ? 'taggy-fly' : 'taggy-walk-right';
             if (this.elapsed < this.shotPoseUntil) key = 'taggy-shoot';
             if ((thrusting || airborne || key === 'taggy-shoot' || this.state === STATES.PLAYING)
