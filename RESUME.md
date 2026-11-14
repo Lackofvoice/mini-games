@@ -8,7 +8,7 @@ ROLLBACK_POINT: 093ccfd92cc7d6c3df53dd1c41376e2305498d18
 3. Ground obstacles: done. Generated 19 ground PNGs plus the overhead source set, with a shared manifest and offline bundle. Four existing ground hazards now use sprite art.
 4. Overhead hazards: done. Replaced procedural branch/sign art with five rope-hung sprite variants. The lowest solid part follows the pivot; reduced motion holds it still.
 5. Walkable road and lanes: done. Taggy walks on three asphalt lanes and casts a shadow. Q/E step while grounded, preserving existing lift and Down actions. The next step wires lane collisions to the new ground patterns.
-6. Obstacle patterns: pending.
+6. Obstacle patterns: done. Seeded decks unlock groups by level. Each ground group leaves a lane clear. Timing uses current world speed. Slows reduce horizontal speed by 20% for 650 ms. Existing bosses and combat remain separate.
 7. Browser verification: pending.
 8. Push and pinned preview: pending.
 # Lot Hero discovery

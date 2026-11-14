@@ -63,6 +63,21 @@ const PLAYER_HALF_HEIGHT = 25;
 const BEST_KEY = 'rv-dash-best-v3';
 const COIN_POINTS = 5;
 // Spacing leaves time to travel floor-to-ceiling even at maximum speed.
+const SPAWN_TIMING = { boss: 750, enemy: 590, first: 385, reaction: 1.5, minimumReaction: 1.2 };
+const ROAD_PATTERNS = [
+    { level: 1, items: [['cone', 0, 0], ['cone', 0, 62], ['cone', 0, 124]] },
+    { level: 1, items: [['pothole', 0, 0]] },
+    { level: 1, items: [['box', 0, 0]] },
+    { level: 1, items: [['chock', 0, 0]] },
+    { level: 2, items: [['cone', 0, 0], ['cone', 1, 110], ['cone', 0, 220]] },
+    { level: 2, items: [['pothole', 0, 0], ['pothole', 1, 94], ['pothole', 0, 178]] },
+    { level: 2, items: [['crate', 0, 0], ['puddle', 0, 98]] },
+    { level: 2, items: [['rock', 0, 0]] },
+    { level: 3, items: [['barrier', 0, 0], ['tires', 1, 157]] },
+    { level: 3, items: [['pile', 0, 0], ['pothole', 0, 115]] },
+    { level: 3, items: [['overhead', null, 0]] },
+    { level: 4, items: [['overhead', null, 0], ['pothole', 0, 78]] }
+];
 const PATTERNS = [
     { key: 'fence', y: 604, width: 120, height: 76, lane: 'low', spacing: 590, coins: 'arc' },
     { key: 'sign', y: 83, width: 102, height: 176, lane: 'high', spacing: 590, coins: 'line' },
@@ -656,7 +671,9 @@ function boot() {
             this.scroll = 0;
             this.layerOffsets = {};
             this.layerLevel = 0;
-            this.nextPattern = 385;
+            this.nextPattern = SPAWN_TIMING.first;
+            this.patternLevel = 0;
+            this.puddleUntil = 0;
             this.patternIndex = 0;
             this.coffeeUntil = 0;
             this.crashUntil = 0;
@@ -779,17 +796,16 @@ function boot() {
             }
             if (this.scroll >= this.nextPattern) {
                 const index = this.patternIndex++;
-                let pattern;
                 if (this.bossQueued) {
-                    pattern = BOSS;
                     this.bossQueued = false;
+                    this.spawnPattern(BOSS, index);
+                    this.nextPattern += SPAWN_TIMING.boss;
                 } else if (this.level > 1 && this.elapsed >= 20000 && index % 2 === 1) {
-                    pattern = ENEMIES[this.enemyIndex++ % ENEMIES.length];
+                    this.spawnPattern(ENEMIES[this.enemyIndex++ % ENEMIES.length], index);
+                    this.nextPattern += SPAWN_TIMING.enemy;
                 } else {
-                    pattern = PATTERNS[this.hazardIndex++ % PATTERNS.length];
+                    this.nextPattern += this.spawnRoadGroup(index);
                 }
-                this.spawnPattern(pattern, index);
-                this.nextPattern += pattern === BOSS ? 750 : 590;
             }
             this.updateHealthPickup(distance);
             if (this.spaceHeld) this.fire();
@@ -1029,25 +1045,59 @@ function boot() {
             return this.textures.get(key).has(0) ? 0 : undefined;
         }
 
-        spawnPattern(pattern, index) {
-            const view = this.add.container(WIDTH + 80, 0).setDepth(3);
+        spawnRoadGroup(index) {
+            if (this.patternLevel !== this.level) {
+                this.patternLevel = this.level;
+                this.patternRandom = seeded(811 + this.level * 71);
+                const eligible = ROAD_PATTERNS.filter(({ level }) => level <= this.level);
+                this.roadDeck = eligible.map((group) => [this.patternRandom(), group])
+                    .sort(([a], [b]) => a - b).map(([, group]) => group);
+                this.roadDeckIndex = 0;
+            }
+            const { items } = this.roadDeck[this.roadDeckIndex++ % this.roadDeck.length];
+            const openLane = Math.floor(this.patternRandom() * 3);
+            const arts = (window.RV_OBSTACLES || []).filter(({ key }) => this.textures.exists('obstacle-' + key));
+            if (!arts.length) {
+                this.spawnPattern(PATTERNS[index % PATTERNS.length], index);
+                return SPAWN_TIMING.enemy;
+            }
+            items.forEach(([family, offset, spacing], i) => {
+                const list = arts.filter((art) => family === 'overhead' ? art.type === 'overhead' : art.family === family);
+                if (!list.length) return;
+                let pick = this.patternRandom() * list.reduce((total, art) => total + art.weight, 0);
+                const art = list.find((entry) => (pick -= entry.weight) < 0) || list.at(-1);
+                const lane = offset == null ? null : (openLane + 1 + offset) % 3;
+                const scale = lane == null ? 1 : LANE_SCALE[lane];
+                const height = lane == null ? 202 : art.height * scale;
+                this.spawnPattern({ key: 'obstacle-' + art.key, art, roadLane: lane,
+                    lane: lane == null ? 'high' : 'low', width: art.width * scale,
+                    height, y: lane == null ? 0 : ROAD_LANES[lane] + 27 - height / 2,
+                    spacing, coins: 'arc' }, index, i === 0);
+            });
+            const reaction = Math.max(SPAWN_TIMING.minimumReaction, SPAWN_TIMING.reaction - (this.level - 1) * .05);
+            return items.at(-1)[2] + 105 + scrollSpeed(this.scroll) * reaction + this.patternRandom() * 62;
+        }
+
+        spawnPattern(pattern, index, includeCoins = true) {
+            const view = this.add.container(WIDTH + 80 + (pattern.spacing && pattern.art ? pattern.spacing : 0), 0).setDepth(3);
             const family = { cone: 'cone', fence: 'barrier', stump: 'pile', tire: 'tires' }[pattern.key];
             const choices = (window.RV_OBSTACLES || []).filter((entry) => pattern.lane === 'high'
                 && !pattern.hp ? entry.type === 'overhead' : entry.family === family);
-            const art = choices.length ? choices[index % choices.length] : null;
+            const art = pattern.art || (choices.length ? choices[index % choices.length] : null);
             const texture = art && this.textures.exists('obstacle-' + art.key) ? 'obstacle-' + art.key : pattern.key;
             const hazard = this.add.sprite(0, pattern.y, texture, this.firstFrame(texture));
             if (!this.anims.exists(pattern.key)) hazard.setDisplaySize(pattern.width, pattern.height);
             if (this.anims.exists(pattern.key) && !this.reducedMotion.matches) hazard.play(pattern.key);
             const hanging = art?.type === 'overhead';
-            if (hanging) hazard.setOrigin(.5, 0).setDisplaySize(pattern.width * 1.45, pattern.y + pattern.height / 2);
+            if (hanging) hazard.setOrigin(.5, 0).setDisplaySize(pattern.width, pattern.art ? pattern.height : pattern.y + pattern.height / 2);
+            else if (pattern.art) view.setDepth(3 + pattern.roadLane / 3);
             view.add(hazard);
             const routeY = pattern.lane === 'high' ? 530 : 455;
-            const coins = Array.from({ length: 5 }, (_, i) => {
+            const coins = Array.from({ length: includeCoins ? 5 : 0 }, (_, i) => {
                 const y = routeY - (pattern.coins === 'arc' ? Math.sin(i / 4 * Math.PI) * 65 : 0);
                 return this.add.sprite((i - 2) * 46, y, 'coin', this.firstFrame('coin')).setScale(this.anims.exists('coin') ? 1 : 0.55);
             });
-            if (index % 5 === 3) coins[2].setTexture('coffee').setDisplaySize(35, 35);
+            if (includeCoins && index % 5 === 3) coins[2].setTexture('coffee').setDisplaySize(35, 35);
             if (this.anims.exists('coin') && !this.reducedMotion.matches) {
                 for (const coin of coins) if (coin.texture.key === 'coin') coin.play('coin');
             }
@@ -1062,19 +1112,31 @@ function boot() {
             const hanging = segment.hanging;
             const tip = hanging ? hazard.displayHeight * (hanging.hit[1] + hanging.hit[3] / 2) : 0;
             const dx = Math.abs(view.x - Math.sin(hazard.rotation) * tip - playerX);
-            const dy = Math.abs((hanging ? Math.cos(hazard.rotation) * tip : hazard.y) - y);
+            const art = pattern.art;
+            const insetY = art && !hanging ? (art.hit[1] + art.hit[3] / 2 - .5) * pattern.height : 0;
+            const dy = Math.abs((hanging ? Math.cos(hazard.rotation) * tip : hazard.y + insetY) - y);
+            const grounded = y >= ROAD_LANES[this.roadLane] - 5;
+            const laneMatches = !art || hanging || !grounded || pattern.roadLane === this.roadLane;
             // Use the opaque cap or base, with a small forgiving inset on each side.
-            const halfWidth = hanging ? hazard.displayWidth * hanging.hit[2] / 2 : pattern.width * (pattern.key === 'tire' ? 0.36 : 0.42);
-            const halfHeight = hanging ? hazard.displayHeight * hanging.hit[3] / 2 : pattern.height * (pattern.key === 'tire' ? 0.36 : 0.44);
+            const halfWidth = hanging ? hazard.displayWidth * hanging.hit[2] / 2 : art ? pattern.width * art.hit[2] / 2 : pattern.width * (pattern.key === 'tire' ? 0.36 : 0.42);
+            const halfHeight = hanging ? hazard.displayHeight * hanging.hit[3] / 2 : art ? pattern.height * art.hit[3] / 2 : pattern.height * (pattern.key === 'tire' ? 0.36 : 0.44);
             if (pattern.key === 'tire' && !this.reducedMotion.matches) hazard.rotation = this.scroll / 48;
             const alive = segment.hp !== 0;
-            if (this.elapsed >= this.immuneUntil && (segment.drops.some((drop) => Math.abs(drop.x - playerX) < PLAYER_HALF_WIDTH + 22
-                && Math.abs(drop.y - y) < PLAYER_HALF_HEIGHT + 22)
-                || alive && dx < halfWidth + PLAYER_HALF_WIDTH && dy < halfHeight + PLAYER_HALF_HEIGHT)) {
+            const impact = alive && laneMatches && dx < halfWidth + PLAYER_HALF_WIDTH
+                && dy < halfHeight + PLAYER_HALF_HEIGHT;
+            if (impact && art?.type === 'slow-down') {
+                if (grounded && !segment.slowed) {
+                    segment.slowed = true;
+                    this.puddleUntil = this.elapsed + 650;
+                }
+            } else if (this.elapsed >= this.immuneUntil && (impact || segment.drops.some((drop) =>
+                Math.abs(drop.x - playerX) < PLAYER_HALF_WIDTH + 22
+                && Math.abs(drop.y - y) < PLAYER_HALF_HEIGHT + 22))) {
+                segment.near = false;
                 this.hitObstacle();
                 return;
             }
-            if (alive && dx < halfWidth && dy < halfHeight + PLAYER_HALF_HEIGHT + 20) segment.near = true;
+            if (alive && laneMatches && art?.type !== 'slow-down' && dx < halfWidth && dy < halfHeight + PLAYER_HALF_HEIGHT + 20) segment.near = true;
             if (!segment.passed && view.x + halfWidth + PLAYER_HALF_WIDTH < playerX) {
                 segment.passed = true;
                 if (alive && segment.near) {
@@ -1128,8 +1190,9 @@ function boot() {
             const left = this.moveKeys.has('ArrowLeft') || this.moveKeys.has('KeyA');
             const right = this.moveKeys.has('ArrowRight') || this.moveKeys.has('KeyD');
             const touchError = this.touchTargetX == null ? null : this.touchTargetX - this.player.x;
-            const target = touchError == null ? (Number(right) - Number(left)) * MOVE_SPEED
-                : Phaser.Math.Clamp(touchError * TOUCH_STEER_GAIN, -MOVE_SPEED, MOVE_SPEED);
+            const maxSpeed = this.elapsed < this.puddleUntil ? MOVE_SPEED * .8 : MOVE_SPEED;
+            const target = touchError == null ? (Number(right) - Number(left)) * maxSpeed
+                : Phaser.Math.Clamp(touchError * TOUCH_STEER_GAIN, -maxSpeed, maxSpeed);
             const response = target === 0 ? STEER_BRAKE : STEER_RESPONSE;
             this.horizontalSpeed += (target - this.horizontalSpeed) * (1 - Math.exp(-response * dt));
             if (target === 0 && Math.abs(this.horizontalSpeed) < STOP_SPEED) this.horizontalSpeed = 0;
