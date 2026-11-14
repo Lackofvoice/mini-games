@@ -16,7 +16,7 @@ Open http://127.0.0.1:8765/ in your browser.
 
 ## Controls and scoring
 
-Hold Up, W, the mouse button, or the left half of the playfield on touch to rise. Release to fall. Shoot with Space or tap the right half on touch. Holding Space fires every 350 ms. Use P, Escape, or Pause to pause or resume. Space or Play Again starts another run after the crash lockout.
+Hold Up, W, the mouse button, or the left half of the playfield on touch to rise. Release to fall. Hold Down for a small descent assist when lift is released. Left/Right or A/D steers, and releasing holds your horizontal position after brief braking. Shoot with Space or tap the right half on touch. Holding Space fires every 350 ms. Use P, Escape, or Pause to pause or resume. Space or Play Again starts another run after the crash lockout.
 
 - Distance earns one point per 20 logical pixels. Red tag coins earn 5 points, and a near miss earns 5 more.
 - Coffee doubles coin points for five active seconds. It leaves flight and course speed predictable.

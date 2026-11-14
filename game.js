@@ -5,12 +5,19 @@ const HEIGHT = 800;
 const GROUND = 644;
 const GRAVITY = 690;
 const THRUST = 1370;
-const MAX_VERTICAL_SPEED = 330;
+const RISE_CAP = 330; // logical px/s, unchanged
+const FALL_CAP = 330; // natural logical px/s
+const ASSISTED_FALL_CAP = 346; // logical px/s, about 5% above natural
+const DESCENT_BONUS = GRAVITY * 0.08; // logical px/s², added to gravity
 const CEILING_Y = 36;
 const FLOOR_Y = GROUND - 32;
 const START_X = 150;
 const EDGE_MARGIN = 54;
 const MOVE_SPEED = 245;
+const STEER_RESPONSE = 25; // per second, active steering
+const STEER_BRAKE = 38; // per second, release and opposed inputs
+const TOUCH_STEER_GAIN = 13; // per second, drag error to target velocity
+const STOP_SPEED = 2; // logical px/s, zero residual drift below this speed
 const MAX_HP = 5;
 const START_HP = 2;
 const IMMUNITY_MS = 1500;
@@ -450,6 +457,13 @@ function boot() {
             on(document, 'keydown', (event) => {
                 const { code } = event;
                 if (event.ctrlKey || event.metaKey || event.altKey || this.loadFailures.size) return;
+                if (event.target.closest('input, select, textarea, [contenteditable], dialog')) return;
+                if (code === 'ArrowDown') {
+                    if (this.state !== STATES.PLAYING || this.crashUntil || event.target !== byId('playfield')) return;
+                    event.preventDefault();
+                    if (!event.repeat) this.downHeld = true;
+                    return;
+                }
                 if (code === 'KeyP' || code === 'Escape') {
                     if (!event.repeat && (this.state === STATES.PLAYING || this.state === STATES.PAUSED)) {
                         event.preventDefault();
@@ -472,11 +486,13 @@ function boot() {
                 }
             });
             on(document, 'keyup', (event) => {
+                if (event.code === 'ArrowDown') this.downHeld = false;
                 this.flightKeys.delete(event.code);
                 this.moveKeys.delete(event.code);
                 if (event.code === 'Space') this.spaceHeld = false;
             });
             const field = byId('playfield');
+            on(field, 'blur', () => { this.downHeld = false; });
             on(field, 'pointerdown', (event) => {
                 if (event.button !== 0 || this.crashUntil || this.state === STATES.PAUSED || this.loadFailures.size) return;
                 if (this.state === STATES.AWAITING_START) this.start();
@@ -547,6 +563,7 @@ function boot() {
         }
 
         clearInput() {
+            this.downHeld = false;
             this.flightKeys.clear();
             this.moveKeys.clear();
             this.touchTargetX = null;
@@ -752,10 +769,12 @@ function boot() {
 
         fly(dt) {
             const thrusting = this.flightKeys.size > 0 || this.pointerId !== null;
-            const target = GRAVITY - (thrusting ? THRUST : 0);
+            const assist = this.downHeld && !thrusting;
+            const target = GRAVITY - (thrusting ? THRUST : 0) + (assist ? DESCENT_BONUS : 0);
+            if (!assist) this.acceleration = Math.min(this.acceleration, GRAVITY);
             this.acceleration += (target - this.acceleration) * (1 - Math.exp(-22 * dt));
             this.verticalSpeed = Phaser.Math.Clamp((this.verticalSpeed + this.acceleration * dt) * Math.exp(-0.65 * dt),
-                -MAX_VERTICAL_SPEED, MAX_VERTICAL_SPEED);
+                -RISE_CAP, assist ? ASSISTED_FALL_CAP : FALL_CAP);
             const previousY = this.player.y;
             const y = previousY + this.verticalSpeed * dt;
             this.player.y = Phaser.Math.Clamp(y, CEILING_Y, FLOOR_Y);
@@ -768,7 +787,7 @@ function boot() {
                 this.addEffect(this.add.circle(this.player.x - 22, this.player.y + 32, 7, BRAND_RED), 180, -19);
                 this.nextExhaust = this.elapsed + 65;
             }
-            const tilt = this.verticalSpeed / MAX_VERTICAL_SPEED * 9;
+            const tilt = this.verticalSpeed / RISE_CAP * 9;
             this.player.setAngle(reduced ? 0 : this.player.angle + (tilt - this.player.angle) * (1 - Math.exp(-13 * dt)));
             const squash = reduced || this.player.y < FLOOR_Y ? 0 : Math.max(0, 1 - (this.elapsed - this.landedAt) / 145) * 0.13;
             this.drawTaggy(thrusting);
@@ -1006,12 +1025,18 @@ function boot() {
         moveHorizontally(dt) {
             const left = this.moveKeys.has('ArrowLeft') || this.moveKeys.has('KeyA');
             const right = this.moveKeys.has('ArrowRight') || this.moveKeys.has('KeyD');
-            const target = this.touchTargetX != null
-                ? Phaser.Math.Clamp((this.touchTargetX - this.player.x) * 8, -MOVE_SPEED, MOVE_SPEED)
-                : left || right ? (Number(right) - Number(left)) * MOVE_SPEED
-                    : Phaser.Math.Clamp((START_X - this.player.x) * 1.8, -85, 85);
-            this.horizontalSpeed += (target - this.horizontalSpeed) * (1 - Math.exp(-12 * dt));
-            const x = this.player.x + this.horizontalSpeed * dt;
+            const touchError = this.touchTargetX == null ? null : this.touchTargetX - this.player.x;
+            const target = touchError == null ? (Number(right) - Number(left)) * MOVE_SPEED
+                : Phaser.Math.Clamp(touchError * TOUCH_STEER_GAIN, -MOVE_SPEED, MOVE_SPEED);
+            const response = target === 0 ? STEER_BRAKE : STEER_RESPONSE;
+            this.horizontalSpeed += (target - this.horizontalSpeed) * (1 - Math.exp(-response * dt));
+            if (target === 0 && Math.abs(this.horizontalSpeed) < STOP_SPEED) this.horizontalSpeed = 0;
+            let travel = this.horizontalSpeed * dt;
+            if (touchError != null && (touchError === 0 || travel / touchError >= 1)) {
+                travel = touchError;
+                this.horizontalSpeed = 0;
+            }
+            const x = this.player.x + travel;
             this.player.x = Phaser.Math.Clamp(x, EDGE_MARGIN, WIDTH - EDGE_MARGIN);
             if (x !== this.player.x) this.horizontalSpeed = 0;
         }

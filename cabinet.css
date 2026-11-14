@@ -35,12 +35,7 @@ main { width: min(100% - 24px, 990px); }
   padding-inline: 8px; border-radius: 4px;
   transition: transform 60ms ease-out;
 }
-.utility button:active { transform: translateY(3px); }
 .utility button::after { content: none; }
-.utility button[data-decode]::before {
-  content: attr(data-decode); position: absolute; inset: 2px; display: grid; place-items: center;
-  background: #24232b; color: #ffc1ca; border-radius: 3px; pointer-events: none;
-}
 #intro { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 #legend { flex: 1 0 100%; }
 #game-area {
@@ -60,7 +55,6 @@ main { width: min(100% - 24px, 990px); }
   letter-spacing: .02em;
   transition: transform 60ms ease-out;
 }
-#start:not(:disabled):active, #replay:active { box-shadow: 0 1px 0 #5c1023; transform: translateY(3px); }
 #start::after, #replay::after { content: none; }
 .primary-label, .slot-label { position: relative; display: block; font-weight: 900; }
 .primary-label::before, .primary-label::after, .slot-label::after {
@@ -178,4 +172,72 @@ main:fullscreen .cabinet-layout, main:fullscreen .masthead { max-width: 990px; m
   #replay:is(:hover,:focus-visible) .primary-label::after,
   .slot.active:is(:hover,:focus-visible) .slot-label::after,
   .shop-key:is(:hover,:focus-visible)::after, .rig, .coin-spray i { animation: none; }
+}
+
+/* The stationary native button is the base and hit area. Only its face moves. */
+.cabinet-press {
+  --raised-depth: 8px;
+  --press-travel: 7px;
+  --press-duration: 55ms;
+  --release-duration: 210ms;
+}
+#console button.cabinet-press {
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  background: #140f19;
+  border-radius: 6px;
+  box-shadow: none;
+  transform: none;
+  animation: none;
+  transition: none;
+}
+#console .utility .cabinet-press, #console #pause { --raised-depth: 7px; --press-travel: 6px; }
+#console .cabinet-press:active { transform: none; }
+#console .cabinet-press::after, #console .cabinet-press::before { content: none; }
+.key-face {
+  display: grid;
+  place-items: center;
+  align-self: stretch;
+  min-width: 44px;
+  min-height: calc(44px - var(--raised-depth));
+  margin-bottom: var(--raised-depth);
+  padding: 6px 10px;
+  border: 1px solid #907385;
+  border-radius: 6px;
+  background: linear-gradient(#504052, #352b3a);
+  transform: translateY(0);
+  transition: transform var(--release-duration) cubic-bezier(.15,.9,.27,1.37);
+  pointer-events: none;
+}
+.primary .key-face, [aria-pressed="true"] .key-face {
+  background: linear-gradient(#e32849, #a80e31);
+  border-color: #ffb3bf;
+}
+#start .key-face, #replay .key-face { border-width: 2px; padding-inline: 16px; }
+.utility .key-face { padding-inline: 8px; }
+.key-face[data-decode] { position: relative; }
+.key-face[data-decode]::after {
+  content: attr(data-decode);
+  position: absolute;
+  inset: 1px;
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  background: #302936;
+  color: #ffc1ca;
+}
+.cabinet-press:not(:disabled):is(:active,[data-press]) .key-face {
+  transform: translateY(var(--press-travel));
+  transition: transform var(--press-duration) ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cabinet-press .key-face, .cabinet-press:not(:disabled):is(:active,[data-press]) .key-face {
+    transform: none;
+    transition: none;
+  }
+  .cabinet-press:not(:disabled):is(:active,[data-press]) .key-face {
+    background: #553142;
+    border-color: #fff1cf;
+  }
 }

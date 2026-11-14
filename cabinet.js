@@ -78,24 +78,55 @@
         fullscreen.textContent = expanded ? 'Exit fullscreen' : 'Fullscreen';
     });
 
-    for (const id of ['start', 'replay']) {
-        const button = byId(id);
+    const pushButtons = ['start', 'replay', 'pause', 'sound', 'fullscreen', 'show-help'].map(byId);
+    for (const button of pushButtons) {
+        const primary = button.id === 'start' || button.id === 'replay';
+        const face = document.createElement('span');
         const label = document.createElement('span');
-        label.className = 'primary-label';
-        label.textContent = button.textContent;
-        label.dataset.text = label.textContent;
-        button.replaceChildren(label);
+        face.className = 'key-face';
+        if (primary) label.className = 'primary-label';
+        face.append(label);
+        const syncFace = () => {
+            if (button.firstElementChild === face) return;
+            label.textContent = button.textContent;
+            if (primary) label.dataset.text = label.textContent;
+            button.replaceChildren(face);
+        };
+        button.classList.add('cabinet-press');
+        syncFace();
+        let timer;
+        const release = () => {
+            clearTimeout(timer);
+            delete button.dataset.press;
+        };
+        const labelObserver = new MutationObserver(() => {
+            syncFace();
+            if (button.disabled || !button.getClientRects().length) release();
+        });
+        labelObserver.observe(button, { childList: true, attributes: true, attributeFilter: ['disabled', 'hidden'] });
+        button.addEventListener('keydown', (event) => {
+            if (event.repeat || button.disabled || !['Enter', ' '].includes(event.key)) return;
+            release();
+            button.dataset.press = '';
+            if (event.key === 'Enter') timer = setTimeout(release, 80);
+        });
+        button.addEventListener('keyup', (event) => {
+            if (event.key === ' ') release();
+        });
+        for (const event of ['blur', 'pointercancel', 'lostpointercapture']) button.addEventListener(event, release);
+        window.addEventListener('blur', release);
     }
 
     const glyphs = '0123456789+#/!';
     const stopDecoders = [];
     for (const id of ['sound', 'fullscreen', 'show-help']) {
         const button = byId(id);
+        const face = button.querySelector('.key-face');
         let timer = null;
         const stop = () => {
             clearInterval(timer);
             timer = null;
-            delete button.dataset.decode;
+            delete face.dataset.decode;
         };
         const decode = () => {
             stop();
@@ -105,7 +136,7 @@
             timer = setInterval(() => {
                 const settled = Math.floor(tick++ * label.length / 9);
                 if (settled >= label.length || button.textContent !== label) return stop();
-                button.dataset.decode = [...label].map((char, index) =>
+                face.dataset.decode = [...label].map((char, index) =>
                     index < settled || char === ' ' ? char : glyphs[Math.floor(Math.random() * glyphs.length)]).join('');
             }, 32);
         };
