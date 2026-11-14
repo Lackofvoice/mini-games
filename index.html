@@ -4,16 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RV Dash</title>
-  <link rel="stylesheet" href="arcade.css?v=16">
-  <link rel="stylesheet" href="cabinet.css?v=16">
-  <script defer src="vendor/phaser.min.js?v=16"></script>
-  <script defer src="game_assets/embedded-assets.js?v=16"></script>
-  <script defer src="leaderboard-config.js?v=16"></script>
-  <script defer src="leaderboard.js?v=16"></script>
-  <script defer src="game_assets/obstacles.js?v=16"></script>
-  <script defer src="game_assets/road-obstacle-sheet.js?v=16"></script>
-  <script defer src="game.js?v=16"></script>
-  <script defer src="cabinet.js?v=16"></script>
+  <link rel="stylesheet" href="arcade.css?v=17">
+  <link rel="stylesheet" href="cabinet.css?v=17">
+  <link rel="stylesheet" href="synthwave.css?v=17">
+  <script defer src="vendor/phaser.min.js?v=17"></script>
+  <script defer src="game_assets/embedded-assets.js?v=17"></script>
+  <script defer src="leaderboard-config.js?v=17"></script>
+  <script defer src="leaderboard.js?v=17"></script>
+  <script defer src="game_assets/obstacles.js?v=17"></script>
+  <script defer src="game_assets/road-obstacle-sheet.js?v=17"></script>
+  <script defer src="game.js?v=17"></script>
+  <script defer src="cabinet.js?v=17"></script>
 </head>
 <body>
   <main>
@@ -72,7 +73,7 @@
         <section id="result" hidden aria-labelledby="result-title">
           <p id="new-best" hidden>New best</p>
           <h2 id="result-title" tabindex="-1">Run complete</h2>
-          <p id="final-score"></p>
+          <p id="final-score" class="numeric"></p>
           <p id="outcome"></p>
           <p>Points are for entertainment and have no cash value.</p>
           <h3>Your next step</h3>
@@ -120,8 +121,8 @@
       <h2 id="controls-title">Flight controls</h2>
       <dl>
         <dt>Fly</dt><dd>Tap Space to jump. Hold Space in the air or the mouse button to fly.</dd>
-        <dt>Descend</dt><dd>Hold Down for a small boost while falling. Lift takes priority.</dd>
-        <dt>Road lanes</dt><dd>Up/W and Down/S move along road depth while grounded. Q/E step between lanes.</dd>
+        <dt>Descend</dt><dd>Hold Down or S for a small boost while airborne. Lift takes priority.</dd>
+        <dt>Road depth</dt><dd>Up/W and Down/S move along road depth while grounded. Q/E step between lanes.</dd>
         <dt>Steer</dt><dd>Left / Right or A / D.</dd>
         <dt>Shoot</dt><dd>F.</dd>
         <dt>Pause</dt><dd>P or Escape.</dd>

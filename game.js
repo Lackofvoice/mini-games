@@ -368,6 +368,8 @@ function makeTextures(scene) {
     graphics.destroy();
 }
 
+const UI_PALETTE = { light: '#f8f5ff', cyan: '#9ff4ff', panel: '#171b35', outline: '#111629' };
+
 // Each value is a fraction of the road speed in logical pixels per second.
 const PARALLAX = { mountains: .025, clouds: .032, treeLine: .065, distantTrees: .095, trees: .17, lot: .23, road: 1, foreground: 1 };
 const wrap = (x, period) => ((x % period) + period) % period;
@@ -475,7 +477,7 @@ function boot() {
             this.layerSpeeds = {};
             this.debugLayers = false;
             this.layerReadout = this.add.text(8, 8, '', { fontFamily: 'monospace', fontSize: '17px',
-                backgroundColor: '#14151b', color: '#ffffff', padding: { x: 6, y: 5 } }).setDepth(20).setVisible(false);
+                backgroundColor: UI_PALETTE.panel, color: UI_PALETTE.cyan, padding: { x: 6, y: 5 } }).setDepth(20).setVisible(false);
             this.scenery = makeScenery(this);
             this.road = this.add.tileSprite(0, GROUND - 58, WIDTH, HEIGHT - GROUND + 58, 'track').setOrigin(0).setDepth(2);
             for (const [key, [, , , count, fps]] of Object.entries(SPRITES)) {
@@ -497,7 +499,7 @@ function boot() {
             this.effects = [];
             this.banner = this.add.text(WIDTH / 2, 100, '', {
                 fontFamily: 'system-ui, sans-serif', fontStyle: 'bold', fontSize: '35px',
-                color: '#ffffff', backgroundColor: '#171922', padding: { x: 24, y: 9 }
+                color: UI_PALETTE.light, backgroundColor: UI_PALETTE.panel, padding: { x: 24, y: 9 }
             }).setOrigin(0.5).setDepth(8).setVisible(false);
             this.makeLegend();
             this.bindControls();
@@ -1411,10 +1413,10 @@ function boot() {
             bubble.style.opacity = this.reducedMotion.matches ? 1 : Math.min(1, (this.speechUntil - this.elapsed) / 360);
         }
 
-        showFeedback(label, x, y, color = '#fff6df') {
+        showFeedback(label, x, y, color = UI_PALETTE.light) {
             const popup = this.add.text(Phaser.Math.Clamp(x, 100, WIDTH - 100), Math.max(45, y - 22), label, {
                 fontFamily: 'monospace', fontSize: '25px', fontStyle: 'bold',
-                color, stroke: '#172635', strokeThickness: 6
+                color, stroke: UI_PALETTE.outline, strokeThickness: 6
             }).setOrigin(0.5);
             this.addEffect(popup, 850, 32);
         }

@@ -53,3 +53,9 @@ Started at 5c3a2efcd25d758913c4cc9ff05ce560816a714a. Free-road is the default in
 The supplied source is assets/road-obstacles-128.png. The offline derivative is game_assets/road-obstacle-sheet.js. The game validates the 512 × 256 dimensions, maps eight cropped frames, and keeps existing PNG fallbacks. The other untracked art folders were left outside the commit. Page assets use v=16.
 
 Next action: try free road movement and short jumps on a physical phone or desktop, and judge depth spacing and obstacle difficulty. See VERIFY.md for Edge, fallback and deterministic group evidence.
+
+# Synthwave UI checkpoint
+
+Start and verified remote: 95ce5a0b9b773c210e350ca50c615eb6135f63a2 on rv-dash-repair, equal to required baseline. Six unrelated untracked art directories are outside scope. DOM owns cabinet, controls, HUD, results, personal best and online board. Phaser owns the game canvas, speech position, banner, debug text and score popups. No separate local board, tabs or boss resource indicator exists. Safe next action: add the skin, then use mocked leaderboard responses in Edge.
+
+Implemented the v17 synthwave stylesheet, page hooks and Phaser UI colors. Gameplay parameters and Worker/config are intact. The online score form now guards pending and completed attempts per run, including across Close and View scores. Khand and Hind are pending verified official packages and licenses. Edge desktop and mobile-emulated evidence is in VERIFY.md. Next action: review the pinned build and try the cabinet on a physical phone.

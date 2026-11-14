@@ -41,7 +41,7 @@
         const status = byId('board-status');
         let active = true;
         let score = 0;
-        let submitted = false;
+        let run = { submitted: false, pending: false };
         let version = 0;
         let opener;
 
@@ -76,7 +76,7 @@
                     byId('board-rows').append(row);
                 }
             }
-            if (offerScore && !submitted && endpoint() && score > 0
+            if (offerScore && !run.submitted && !run.pending && endpoint() && score > 0
                 && (!result.ok || result.data.length < 10 || score > result.data.at(-1).score)) {
                 try { initials.value = localStorage.getItem('arcade-initials:' + game) || ''; } catch {}
                 form.hidden = false;
@@ -97,7 +97,7 @@
         });
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
-            if (active || submit.disabled) return;
+            if (active || run.submitted || run.pending || submit.disabled) return;
             const name = initials.value.toUpperCase();
             if (!/^[A-Z]{3}$/.test(name)) {
                 status.textContent = 'Enter three letters';
@@ -105,16 +105,23 @@
                 return;
             }
             const current = version;
+            const attempt = run;
+            attempt.pending = true;
             submit.disabled = true;
             status.textContent = 'Sending score…';
             const result = await submitScore(game, name, score);
-            if (current !== version || active) return;
+            attempt.pending = false;
+            if (result.ok) attempt.submitted = true;
+            if (attempt !== run || active || panel.hidden) return;
+            if (current !== version) {
+                await open(opener, !attempt.submitted);
+                return;
+            }
             submit.disabled = false;
             if (!result.ok) {
                 status.textContent = result.message;
                 return;
             }
-            submitted = true;
             try { localStorage.setItem('arcade-initials:' + game, name); } catch {}
             const expected = version + 1;
             await open(opener, false);
@@ -129,7 +136,7 @@
             finish(points) {
                 active = false;
                 score = points;
-                submitted = false;
+                run = { submitted: false, pending: false };
                 if (endpoint() && points > 0) void open(byId('view-scores-result'), true);
             }
         };

@@ -236,3 +236,13 @@ Baseline ff72cd435d04584aad5889c5272d806ad5b48b83. Windows Edge headless through
 - PASS: 360 seeded groups at the maximum scroll speed across levels 1–15 left at least one clear depth band and had a minimum measured interval of 1.66 seconds after a group. Repeating the level-one seed reproduced placement. A controlled contact probe verified grounded damage and altitude clearance. This geometry check does not measure human difficulty across every enemy combination.
 - PASS: file mode started with the optional bundle blocked and rendered existing fallback art. Controlled game over and DeWitt store link worked. Existing leaderboard configuration and logic were preserved. Six Worker tests passed. The main browser pass had no uncaught runtime exceptions.
 - NOT TESTED: physical-phone feel, exhaustive collision checks for every art cell, production leaderboard writes, and human playtest approval. See the Phase 11b screenshot folder for desktop and touch captures.
+
+## Synthwave UI skin
+
+- PASS: local and fetched rv-dash-repair started at 95ce5a0b9b773c210e350ca50c615eb6135f63a2, equal to the required baseline and zero commits ahead or behind.
+- PASS: Edge on local HTTP at 1366 × 768 and 360 px with v17. Long scores fit, canvas dimensions matched expectations, keyboard focus was visible, and mobile had no horizontal overflow. Reviewed the desktop start, mobile HUD and mobile leaderboard captures. The screenshot folder is rv-dash-synthwave in the session's visualizations output.
+- PASS: grounded road controls, jump into flight, F to shoot, opening Controls pauses, controlled collision reaches results, DeWitt inventory selection, replay and held-input clearing on blur. Emulated touch started the game without hover. Reduced-motion suppressed the intro and primary animation.
+- PASS: mocked loading, empty, offline and populated leaderboard views, initials focus isolated from gameplay, and a pending score could not be submitted twice across close/reopen. Mock success refreshed the board. No live leaderboard API calls, missing assets or uncaught exceptions were recorded during this pass. All six Worker unit tests passed.
+- PASS: game.js and leaderboard.js syntax checks and git diff whitespace check. The Phaser diff is limited to UI colors.
+- PENDING: the official Khand and Hind font packages and redistribution licenses could not be verified. System fallback stacks are active.
+- NOT TESTED: physical phone, audio by ear, file URL in this pass, full human playthrough, or hardware frame-time profiling.
