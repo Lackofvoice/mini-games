@@ -779,7 +779,10 @@ function boot() {
                 const key = segment.pattern.key;
                 const wave = key === 'bird' ? Math.sin(segment.age / 530) * 52
                     : key === 'boss-sold' ? Math.sin(segment.age / 1100) * 86 : 0;
-                segment.hazard.y = segment.pattern.y + wave;
+                segment.hazard.y = segment.hanging ? 0 : segment.pattern.y + wave;
+                if (segment.hanging && !this.reducedMotion.matches) {
+                    segment.hazard.rotation = Math.sin(segment.age / 570) * .055;
+                }
                 if (segment.hp > 0 && segment.pattern === BOSS && segment.age >= segment.nextDrop
                     && segment.view.x > START_X + 115) {
                     segment.nextDrop += 1550;
@@ -998,11 +1001,15 @@ function boot() {
         spawnPattern(pattern, index) {
             const view = this.add.container(WIDTH + 80, 0).setDepth(3);
             const family = { cone: 'cone', fence: 'barrier', stump: 'pile', tire: 'tires' }[pattern.key];
-            const art = (window.RV_OBSTACLES || []).find((entry) => entry.family === family);
+            const choices = (window.RV_OBSTACLES || []).filter((entry) => pattern.lane === 'high'
+                && !pattern.hp ? entry.type === 'overhead' : entry.family === family);
+            const art = choices.length ? choices[index % choices.length] : null;
             const texture = art && this.textures.exists('obstacle-' + art.key) ? 'obstacle-' + art.key : pattern.key;
             const hazard = this.add.sprite(0, pattern.y, texture, this.firstFrame(texture));
             if (!this.anims.exists(pattern.key)) hazard.setDisplaySize(pattern.width, pattern.height);
             if (this.anims.exists(pattern.key) && !this.reducedMotion.matches) hazard.play(pattern.key);
+            const hanging = art?.type === 'overhead';
+            if (hanging) hazard.setOrigin(.5, 0).setDisplaySize(pattern.width * 1.45, pattern.y + pattern.height / 2);
             view.add(hazard);
             const routeY = pattern.lane === 'high' ? 530 : 455;
             const coins = Array.from({ length: 5 }, (_, i) => {
@@ -1014,18 +1021,20 @@ function boot() {
                 for (const coin of coins) if (coin.texture.key === 'coin') coin.play('coin');
             }
             view.add(coins);
-            this.segments.push({ view, hazard, coins, pattern, hp: pattern.hp, age: 0, drops: [], nextDrop: 900, near: false, passed: false });
+            this.segments.push({ view, hazard, coins, pattern, hanging: hanging ? art : null, hp: pattern.hp, age: 0, drops: [], nextDrop: 900, near: false, passed: false });
         }
 
         checkPattern(segment) {
             const { view, hazard, pattern, coins } = segment;
             const y = this.player.y;
             const playerX = this.player.x;
-            const dx = Math.abs(view.x - playerX);
-            const dy = Math.abs(hazard.y - y);
+            const hanging = segment.hanging;
+            const tip = hanging ? hazard.displayHeight * (hanging.hit[1] + hanging.hit[3] / 2) : 0;
+            const dx = Math.abs(view.x - Math.sin(hazard.rotation) * tip - playerX);
+            const dy = Math.abs((hanging ? Math.cos(hazard.rotation) * tip : hazard.y) - y);
             // Use the opaque cap or base, with a small forgiving inset on each side.
-            const halfWidth = pattern.width * (pattern.key === 'tire' ? 0.36 : 0.42);
-            const halfHeight = pattern.height * (pattern.key === 'tire' ? 0.36 : 0.44);
+            const halfWidth = hanging ? hazard.displayWidth * hanging.hit[2] / 2 : pattern.width * (pattern.key === 'tire' ? 0.36 : 0.42);
+            const halfHeight = hanging ? hazard.displayHeight * hanging.hit[3] / 2 : pattern.height * (pattern.key === 'tire' ? 0.36 : 0.44);
             if (pattern.key === 'tire' && !this.reducedMotion.matches) hazard.rotation = this.scroll / 48;
             const alive = segment.hp !== 0;
             if (this.elapsed >= this.immuneUntil && (segment.drops.some((drop) => Math.abs(drop.x - playerX) < PLAYER_HALF_WIDTH + 22
