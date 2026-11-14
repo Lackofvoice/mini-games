@@ -13,6 +13,9 @@ files = {
     "taggy-keys": "taggy/taggy_keys.png",
 }
 files.update({p.stem: p.relative_to(ASSETS) for p in sorted((ASSETS / "simlab").glob("*.png"))})
+files.update({
+    p.stem: p for p in sorted((ASSETS.parent / "assets" / "sprites").glob("*.png"))
+})
 uris = {
     key: "data:image/png;base64," + base64.b64encode((ASSETS / path).read_bytes()).decode("ascii")
     for key, path in files.items()

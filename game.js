@@ -13,7 +13,33 @@ const CRASH_MS = 520;
 const BRAND_RED = 0xdc2626;
 const IDLE_LINES = ['Nice day for a cruise.', 'Taking the scenic route.', 'Still with me?'];
 const COFFEE_MS = 5000;
-const LEVEL_DISTANCE = 2400;
+const LEVEL_DISTANCE = 3000;
+const SHOT_MS = 350;
+const SHOT_SPEED = 690;
+const ENEMIES = [
+    { key: 'drone', y: 395, width: 90, height: 58, lane: 'high', hp: 1 },
+    { key: 'bird', y: 300, width: 76, height: 54, lane: 'high', hp: 1 },
+    { key: 'cart', y: 598, width: 100, height: 79, lane: 'low', hp: 2 }
+];
+const BOSS = { key: 'boss-sold', y: 310, width: 160, height: 115, lane: 'high', hp: 10 };
+const SPRITES = {
+    'taggy-idle-right': ['game_assets/taggy/taggy_idle.png', 160, 144, 1, 0],
+    'taggy-walk-right': ['game_assets/taggy/taggy_walk.png', 160, 144, 4, 7.14],
+    'prop_tree_pine': ['game_assets/simlab/prop_tree_pine.png', 0, 0, 1, 0],
+    'prop_fence_segment': ['game_assets/simlab/prop_fence_segment.png', 0, 0, 1, 0],
+    'lite_tt_v2': ['game_assets/simlab/lite_tt_v2.png', 0, 0, 1, 0],
+    'generic_bunkhouse_fifth_wheel_teal': ['game_assets/simlab/generic_bunkhouse_fifth_wheel_teal.png', 0, 0, 1, 0],
+    'taggy-fly': ['assets/sprites/taggy-fly.png', 160, 144, 4, 12],
+    'taggy-shoot': ['assets/sprites/taggy-shoot.png', 160, 144, 4, 14],
+    'taggy-hit': ['assets/sprites/taggy-hit.png', 160, 144, 4, 10],
+    'drone': ['assets/sprites/drone.png', 96, 64, 4, 10],
+    'bird': ['assets/sprites/bird.png', 96, 64, 4, 12],
+    'cart': ['assets/sprites/cart.png', 112, 80, 4, 9],
+    'boss-sold': ['assets/sprites/boss-sold.png', 160, 120, 4, 8],
+    'bill-projectile': ['assets/sprites/bill-projectile.png', 48, 32, 4, 12],
+    'coin': ['assets/sprites/coin.png', 64, 64, 4, 10],
+    'pop-fx': ['assets/sprites/pop-fx.png', 64, 64, 4, 16]
+};
 const MIN_SPEED = 132;
 const MAX_SPEED = 230;
 const PLAYER_HALF_WIDTH = 21;
@@ -150,6 +176,44 @@ function makeTextures(scene) {
             circle(0x637b4e, x, y, r);
         }
     });
+    texture('drone', 96, 64, () => {
+        box(0x89878d, 12, 24, 72, 32);
+        box(0xbcbabe, 2, 12, 34, 12);
+        box(0xbcbabe, 60, 12, 34, 12);
+        circle(BRAND_RED, 48, 39, 12);
+    });
+    texture('bird', 96, 64, () => {
+        graphics.fillStyle(ink).fillTriangle(13, 17, 78, 26, 54, 59);
+        graphics.fillStyle(0xa86e49).fillTriangle(23, 22, 69, 30, 53, 53);
+        circle(0xd8a97b, 29, 34, 15);
+        graphics.fillStyle(0xffd27d).fillTriangle(2, 38, 19, 32, 19, 43);
+    });
+    texture('cart', 112, 80, () => {
+        box(BRAND_RED, 17, 11, 86, 45, 11);
+        for (const x of [31, 48, 65, 82]) box(0xbfb9b4, x, 19, 10, 29, 3);
+        circle(0xa6a1a0, 33, 62, 12);
+        circle(0xa6a1a0, 86, 62, 12);
+    });
+    texture('boss-sold', 160, 120, () => {
+        box(0xa11d1d, 10, 31, 140, 84, 15);
+        box(0x6b3d3c, 60, 4, 40, 37, 12);
+        box(0xfff4de, 19, 53, 122, 43, 9);
+        const letters = [
+            ['111','100','111','001','111'], ['111','101','101','101','111'],
+            ['100','100','100','100','111'], ['110','101','101','101','110']
+        ];
+        letters.forEach((letter, i) => letter.forEach((row, y) => [...row].forEach((pixel, x) => {
+            if (pixel === '1') rect(BRAND_RED, 35 + i * 24 + x * 5, 61 + y * 5, 5, 5);
+        })));
+    });
+    texture('bill-projectile', 48, 32, () => {
+        box(0xfff4de, 2, 4, 44, 24, 6);
+        box(BRAND_RED, 14, 7, 20, 18, 5);
+        rect(0xfff4de, 21, 12, 6, 7);
+    });
+    texture('pop-fx', 64, 64, () => {
+        for (const [x, y] of [[32, 12], [15, 28], [49, 33], [28, 49]]) circle(0xffc5a0, x, y, 9);
+    });
     texture('sky', WIDTH, HEIGHT, () => {
         for (let y = 0; y < HEIGHT; y += 4) {
             const t = y / HEIGHT;
@@ -220,16 +284,15 @@ function boot() {
                 this.loadFailures.add(key);
                 byId('status').textContent = 'Could not load: ' + [...this.loadFailures].join(', ');
             };
-            this.load.on('loaderror', ({ key }) => fail(key));
-            for (const side of ['right', 'left']) {
-                for (const pose of ['idle', 'walk']) {
-                    const key = 'taggy-' + pose + '-' + side;
-                    if (!assets[key]) fail(key);
-                    else this.load.spritesheet(key, assets[key], { frameWidth: 160, frameHeight: 144 });
+            this.load.on('loaderror', ({ key }) => {
+                if (!SPRITES[key]?.[0].startsWith('assets/sprites/')) fail(key);
+            });
+            for (const [key, [path, width, height]] of Object.entries(SPRITES)) {
+                if (!assets[key]) {
+                    if (!path.startsWith('assets/sprites/')) fail(key);
+                    continue;
                 }
-            }
-            for (const key of new Set(SCENERY.map(([name]) => name))) {
-                if (!assets[key]) fail(key);
+                if (width && height) this.load.spritesheet(key, assets[key], { frameWidth: width, frameHeight: height });
                 else this.load.image(key, assets[key]);
             }
         }
@@ -239,26 +302,26 @@ function boot() {
             this.score = 0;
             this.elapsed = 0;
             this.store = null;
+            this.flightKeys = new Set();
             this.spaceHeld = false;
             this.pointerId = null;
+            this.shots = [];
+            this.finishedRuns = 0;
             this.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
             makeTextures(this);
-            if (['idle-right', 'walk-right', 'idle-left', 'walk-left']
-                .some((pose) => !this.textures.exists('taggy-' + pose))) {
-                if (!this.loadFailures.size) byId('status').textContent = 'Taggy could not load. Refresh to try again.';
-                return;
-            }
             if (this.loadFailures.size) return;
             this.add.image(0, 0, 'sky').setOrigin(0);
             this.clouds = this.add.tileSprite(0, 0, WIDTH, HEIGHT, 'clouds').setOrigin(0);
             this.scenery = makeScenery(this);
             this.road = this.add.tileSprite(0, GROUND - 24, WIDTH, HEIGHT - GROUND + 24, 'track').setOrigin(0).setDepth(2);
-            if (!this.anims.exists('run-right')) this.anims.create({
-                key: 'run-right',
-                frames: this.anims.generateFrameNumbers('taggy-walk-right', { start: 0, end: 3 }),
-                duration: 560,
-                repeat: -1
-            });
+            for (const [key, [, , , count, fps]] of Object.entries(SPRITES)) {
+                if (fps && this.textures.get(key).getFrameNames().length >= count && !this.anims.exists(key)) {
+                    this.anims.create({
+                        key, frames: this.anims.generateFrameNumbers(key, { start: 0, end: count - 1 }),
+                        frameRate: fps, repeat: ['pop-fx', 'taggy-hit', 'taggy-shoot'].includes(key) ? 0 : -1
+                    });
+                }
+            }
             this.player = this.add.sprite(START_X, FLOOR_Y, 'taggy-idle-right', 0).setScale(0.5).setDepth(5);
             this.muted = true;
             this.best = readBest();
@@ -314,26 +377,43 @@ function boot() {
             });
             on(window, 'blur', () => this.clearInput());
             on(document, 'keydown', (event) => {
-                if (event.code !== 'Space' || event.ctrlKey || event.metaKey || event.altKey
-                    || event.target.closest('button, a')) return;
-                if (this.state === STATES.PAUSED || this.loadFailures.size) return;
+                const { code } = event;
+                if (event.ctrlKey || event.metaKey || event.altKey || this.loadFailures.size) return;
+                if (code === 'KeyP' || code === 'Escape') {
+                    if (!event.repeat && (this.state === STATES.PLAYING || this.state === STATES.PAUSED)) {
+                        event.preventDefault();
+                        byId('pause').click();
+                    }
+                    return;
+                }
+                const fly = code === 'ArrowUp' || code === 'KeyW';
+                if ((!fly && code !== 'Space') || event.target.closest('button, a') || this.state === STATES.PAUSED) return;
                 event.preventDefault();
                 if (event.repeat || this.crashUntil && this.state === STATES.PLAYING) return;
                 if (this.state !== STATES.PLAYING) this.start();
-                this.spaceHeld = true;
+                if (fly) this.flightKeys.add(code);
+                else {
+                    this.spaceHeld = true;
+                    this.fire();
+                }
             });
             on(document, 'keyup', (event) => {
+                this.flightKeys.delete(event.code);
                 if (event.code === 'Space') this.spaceHeld = false;
             });
             const field = byId('playfield');
             on(field, 'pointerdown', (event) => {
-                if (event.button !== 0 || this.pointerId !== null || this.crashUntil
-                    || this.state === STATES.PAUSED || this.loadFailures.size) return;
+                if (event.button !== 0 || this.crashUntil || this.state === STATES.PAUSED || this.loadFailures.size) return;
                 if (this.state === STATES.AWAITING_START) this.start();
                 if (this.state !== STATES.PLAYING) return;
                 field.focus({ preventScroll: true });
-                field.setPointerCapture(event.pointerId);
-                this.pointerId = event.pointerId;
+                const rect = field.getBoundingClientRect();
+                if (event.pointerType === 'touch' && event.clientX >= rect.left + rect.width / 2) {
+                    this.fire();
+                } else if (this.pointerId === null) {
+                    field.setPointerCapture(event.pointerId);
+                    this.pointerId = event.pointerId;
+                }
             });
             for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) {
                 on(field, event, (pointer) => {
@@ -371,6 +451,7 @@ function boot() {
         }
 
         clearInput() {
+            this.flightKeys.clear();
             this.spaceHeld = false;
             const field = byId('playfield');
             if (this.pointerId !== null && field.hasPointerCapture(this.pointerId)) field.releasePointerCapture(this.pointerId);
@@ -379,10 +460,22 @@ function boot() {
 
         start() {
             if (this.state !== STATES.AWAITING_START && this.state !== STATES.GAME_OVER) return;
-            for (const segment of this.segments) segment.view.destroy();
+            for (const segment of this.segments) {
+                segment.view.destroy();
+                for (const drop of segment.drops) drop.destroy();
+            }
             for (const effect of this.effects) effect.object.destroy();
             this.segments = [];
             this.effects = [];
+            for (const shot of this.shots) shot.destroy();
+            this.shots = [];
+            this.nextShot = 0;
+            this.shotPoseUntil = 0;
+            this.bossQueued = false;
+            this.enemyIndex = 0;
+            this.hazardIndex = 0;
+            this.acceleration = GRAVITY;
+            this.landedAt = -1000;
             this.score = 0;
             this.level = 1;
             this.bonus = 0;
@@ -399,8 +492,8 @@ function boot() {
             this.verticalSpeed = 0;
             this.nextExhaust = 0;
             this.idleLine = 0;
-            this.player.clearTint().setAngle(0).setPosition(START_X, FLOOR_Y);
-            this.drawTaggy();
+            this.player.clearTint().setScale(0.5).setAngle(0).setPosition(START_X, FLOOR_Y);
+            this.drawTaggy(false);
             this.banner.setVisible(false);
             this.drawScenery();
             this.selectStore(null);
@@ -414,8 +507,13 @@ function boot() {
         setRoundState(state) {
             this.state = state;
             this.clearInput();
-            if (state === STATES.PLAYING) this.player.anims.resume();
-            else this.player.anims.pause();
+            const sprites = [this.player, ...this.shots,
+                ...this.segments.flatMap(({ hazard, coins }) => [hazard, ...coins]),
+                ...this.effects.map(({ object }) => object)];
+            for (const sprite of sprites) {
+                if (state === STATES.PLAYING) sprite.anims?.resume();
+                else sprite.anims?.pause();
+            }
             this.renderState();
         }
 
@@ -425,6 +523,8 @@ function boot() {
             byId('start').disabled = false;
             byId('start').hidden = !intro;
             byId('intro').hidden = !intro;
+            byId('flight-hint').hidden = intro || this.state === GAME_OVER || this.finishedRuns > 0;
+            byId('shot-status').hidden = intro || this.state === GAME_OVER;
             byId('pause').hidden = this.state !== PLAYING && this.state !== PAUSED;
             byId('pause').textContent = this.state === PAUSED ? 'Resume' : 'Pause';
             document.body.classList.toggle('in-flight', this.state === PLAYING);
@@ -436,6 +536,7 @@ function boot() {
         updateStats() {
             byId('score').textContent = this.score;
             byId('level').textContent = this.level;
+            byId('shot-meter').value = Math.max(0, 1 - (this.nextShot - this.elapsed) / SHOT_MS);
             const remaining = Math.max(0, Math.ceil((this.coffeeUntil - this.elapsed) / 1000));
             const effects = remaining ? 'Coffee ' + remaining + 's � x2' : '';
             const indicator = byId('effects');
@@ -469,15 +570,11 @@ function boot() {
             this.fly(dt);
             const distance = scrollSpeed(this.scroll) * dt;
             this.scroll += distance;
-            if (this.scroll >= this.nextPattern) {
-                const pattern = PATTERNS[this.patternIndex % PATTERNS.length];
-                this.spawnPattern(pattern, this.patternIndex++);
-                this.nextPattern += pattern.spacing;
-            }
             this.score = Math.floor(this.scroll / 20) + this.bonus;
             const level = 1 + Math.floor(this.scroll / LEVEL_DISTANCE);
             if (level > this.level) {
                 this.level = level;
+                if (level % 5 === 0) this.bossQueued = true;
                 this.banner.setText('LEVEL ' + level).setVisible(true);
                 this.bannerUntil = this.elapsed + 1100;
                 this.speak('Level ' + level + '. Faster now.');
@@ -486,28 +583,72 @@ function boot() {
                 this.newBest = true;
                 this.speak('New best. Nice flying.');
             }
+            if (this.scroll >= this.nextPattern) {
+                const index = this.patternIndex++;
+                let pattern;
+                if (this.bossQueued) {
+                    pattern = BOSS;
+                    this.bossQueued = false;
+                } else if (this.level > 1 && this.elapsed >= 20000 && index % 2 === 1) {
+                    pattern = ENEMIES[this.enemyIndex++ % ENEMIES.length];
+                } else {
+                    pattern = PATTERNS[this.hazardIndex++ % PATTERNS.length];
+                }
+                this.spawnPattern(pattern, index);
+                this.nextPattern += pattern === BOSS ? 750 : 590;
+            }
+            if (this.spaceHeld) this.fire();
             for (const segment of this.segments) {
-                segment.view.x -= distance;
+                segment.age += step;
+                segment.view.x -= distance * (segment.pattern === BOSS ? 0.78 : 1);
+                const key = segment.pattern.key;
+                const wave = key === 'bird' ? Math.sin(segment.age / 530) * 52
+                    : key === 'boss-sold' ? Math.sin(segment.age / 1100) * 86 : 0;
+                segment.hazard.y = segment.pattern.y + wave;
+                if (segment.hp > 0 && segment.pattern === BOSS && segment.age >= segment.nextDrop
+                    && segment.view.x > START_X + 115) {
+                    segment.nextDrop += 1550;
+                    const drop = this.add.image(segment.view.x, 592, 'tire').setDisplaySize(58, 58).setDepth(3);
+                    segment.drops.push(drop);
+                }
+                for (const drop of segment.drops) drop.x -= distance * 0.64;
+            }
+            this.updateShots(dt);
+            for (const segment of this.segments) {
                 this.checkPattern(segment);
                 if (this.crashUntil) break;
             }
-            while (this.segments[0]?.view.x < -200) this.segments.shift().view.destroy();
+            this.segments = this.segments.filter(({ view, drops }) => {
+                if (view.x >= -200 || drops.some((drop) => drop.x > -40)) return true;
+                view.destroy();
+                for (const drop of drops) drop.destroy();
+                return false;
+            });
         }
 
         fly(dt) {
-            const thrusting = this.spaceHeld || this.pointerId !== null;
-            const acceleration = GRAVITY - (thrusting ? THRUST : 0);
-            this.verticalSpeed = Phaser.Math.Clamp(this.verticalSpeed + acceleration * dt,
+            const thrusting = this.flightKeys.size > 0 || this.pointerId !== null;
+            const target = GRAVITY - (thrusting ? THRUST : 0);
+            this.acceleration += (target - this.acceleration) * (1 - Math.exp(-22 * dt));
+            this.verticalSpeed = Phaser.Math.Clamp((this.verticalSpeed + this.acceleration * dt) * Math.exp(-0.65 * dt),
                 -MAX_VERTICAL_SPEED, MAX_VERTICAL_SPEED);
-            const y = this.player.y + this.verticalSpeed * dt;
+            const previousY = this.player.y;
+            const y = previousY + this.verticalSpeed * dt;
             this.player.y = Phaser.Math.Clamp(y, CEILING_Y, FLOOR_Y);
-            if (y !== this.player.y) this.verticalSpeed = 0;
-            if (thrusting && !this.reducedMotion.matches && this.elapsed >= this.nextExhaust) {
-                this.addEffect(this.add.circle(START_X, this.player.y + 32, 7, BRAND_RED), 180, -19);
+            if (y !== this.player.y) {
+                if (y > FLOOR_Y && previousY < FLOOR_Y) this.landedAt = this.elapsed;
+                this.verticalSpeed = 0;
+            }
+            const reduced = this.reducedMotion.matches;
+            if (thrusting && !reduced && this.elapsed >= this.nextExhaust) {
+                this.addEffect(this.add.circle(START_X - 22, this.player.y + 32, 7, BRAND_RED), 180, -19);
                 this.nextExhaust = this.elapsed + 65;
             }
-            this.player.setAngle(this.reducedMotion.matches ? 0 : this.verticalSpeed / MAX_VERTICAL_SPEED * 9);
-            this.drawTaggy();
+            const tilt = this.verticalSpeed / MAX_VERTICAL_SPEED * 9;
+            this.player.setAngle(reduced ? 0 : this.player.angle + (tilt - this.player.angle) * (1 - Math.exp(-13 * dt)));
+            const squash = reduced ? 0 : Math.max(0, 1 - (this.elapsed - this.landedAt) / 145) * 0.13;
+            this.player.setScale(0.5 * (1 + squash), 0.5 * (1 - squash));
+            this.drawTaggy(thrusting);
         }
 
         drawScenery() {
@@ -519,27 +660,78 @@ function boot() {
             }
         }
 
-        drawTaggy() {
-            if (this.state === STATES.PLAYING && this.player.y === FLOOR_Y && !this.reducedMotion.matches) {
-                this.player.play('run-right', true);
+        drawTaggy(thrusting) {
+            const airborne = this.player.y < FLOOR_Y;
+            let key = airborne ? 'taggy-fly' : 'taggy-walk-right';
+            if (this.elapsed < this.shotPoseUntil) key = 'taggy-shoot';
+            if ((thrusting || airborne || key === 'taggy-shoot' || this.state === STATES.PLAYING)
+                && !this.reducedMotion.matches && this.anims.exists(key)) {
+                this.player.play(key, true);
             } else if (this.player.texture.key !== 'taggy-idle-right') {
                 this.player.anims.stop();
                 this.player.setTexture('taggy-idle-right', 0);
             }
         }
 
+        fire() {
+            if (this.elapsed < this.nextShot || this.crashUntil) return;
+            this.nextShot = this.elapsed + SHOT_MS;
+            this.shotPoseUntil = this.elapsed + 190;
+            const shot = this.add.sprite(START_X + 29, this.player.y, 'bill-projectile', this.firstFrame('bill-projectile')).setDisplaySize(30, 20).setDepth(4);
+            if (this.anims.exists('bill-projectile') && !this.reducedMotion.matches) shot.play('bill-projectile');
+            this.shots.push(shot);
+            this.playPickupSound('shot');
+        }
+
+        updateShots(dt) {
+            this.shots = this.shots.filter((shot) => {
+                shot.x += SHOT_SPEED * dt;
+                if (!this.reducedMotion.matches) shot.rotation += 6 * dt;
+                const enemy = this.segments.find(({ view, hazard, pattern, hp }) => hp > 0
+                    && Math.abs(shot.x - view.x) < pattern.width * 0.42 + 9
+                    && Math.abs(shot.y - hazard.y) < pattern.height * 0.42 + 6);
+                if (!enemy && shot.x < WIDTH + 35) return true;
+                shot.destroy();
+                if (!enemy) return false;
+                enemy.hp -= 1;
+                if (enemy.hp > 0) {
+                    enemy.hazard.setAlpha(0.7);
+                    return false;
+                }
+                enemy.hazard.setVisible(false);
+                const boss = enemy.pattern === BOSS;
+                const points = boss ? 250 : 25;
+                this.addBonus(points);
+                const pop = this.add.sprite(enemy.view.x, enemy.hazard.y, 'pop-fx', this.firstFrame('pop-fx'));
+                if (this.anims.exists('pop-fx') && !this.reducedMotion.matches) pop.play('pop-fx');
+                this.addEffect(pop, 260, 12);
+                this.showFeedback('+' + points, enemy.view.x, enemy.hazard.y);
+                this.speak(boss ? 'Stamp returned to sender.' : 'That clears the lane.');
+                this.playPickupSound('score');
+                return false;
+            });
+        }
+
+        firstFrame(key) {
+            return this.textures.get(key).has(0) ? 0 : undefined;
+        }
+
         spawnPattern(pattern, index) {
             const view = this.add.container(WIDTH + 80, 0).setDepth(3);
-            const hazard = this.add.image(0, pattern.y, pattern.key).setDisplaySize(pattern.width, pattern.height);
+            const hazard = this.add.sprite(0, pattern.y, pattern.key, this.firstFrame(pattern.key)).setDisplaySize(pattern.width, pattern.height);
+            if (this.anims.exists(pattern.key) && !this.reducedMotion.matches) hazard.play(pattern.key);
             view.add(hazard);
             const routeY = pattern.lane === 'high' ? 530 : 455;
             const coins = Array.from({ length: 5 }, (_, i) => {
                 const y = routeY - (pattern.coins === 'arc' ? Math.sin(i / 4 * Math.PI) * 65 : 0);
-                return this.add.image((i - 2) * 46, y, 'coin').setScale(0.55);
+                return this.add.sprite((i - 2) * 46, y, 'coin', this.firstFrame('coin')).setDisplaySize(35, 35);
             });
-            if (index % 5 === 3) coins[2].setTexture('coffee');
+            if (index % 5 === 3) coins[2].setTexture('coffee').setDisplaySize(35, 35);
+            if (this.anims.exists('coin') && !this.reducedMotion.matches) {
+                for (const coin of coins) if (coin.texture.key === 'coin') coin.play('coin');
+            }
             view.add(coins);
-            this.segments.push({ view, hazard, coins, pattern, near: false, passed: false });
+            this.segments.push({ view, hazard, coins, pattern, hp: pattern.hp, age: 0, drops: [], nextDrop: 900, near: false, passed: false });
         }
 
         checkPattern(segment) {
@@ -551,14 +743,17 @@ function boot() {
             const halfWidth = pattern.width * (pattern.key === 'tire' ? 0.36 : 0.42);
             const halfHeight = pattern.height * (pattern.key === 'tire' ? 0.36 : 0.44);
             if (pattern.key === 'tire' && !this.reducedMotion.matches) hazard.rotation = this.scroll / 48;
-            if (dx < halfWidth + PLAYER_HALF_WIDTH && dy < halfHeight + PLAYER_HALF_HEIGHT) {
+            const alive = segment.hp !== 0;
+            if (segment.drops.some((drop) => Math.abs(drop.x - START_X) < PLAYER_HALF_WIDTH + 22
+                && Math.abs(drop.y - y) < PLAYER_HALF_HEIGHT + 22)
+                || alive && dx < halfWidth + PLAYER_HALF_WIDTH && dy < halfHeight + PLAYER_HALF_HEIGHT) {
                 this.hitObstacle();
                 return;
             }
-            if (dx < halfWidth && dy < halfHeight + PLAYER_HALF_HEIGHT + 20) segment.near = true;
+            if (alive && dx < halfWidth && dy < halfHeight + PLAYER_HALF_HEIGHT + 20) segment.near = true;
             if (!segment.passed && view.x + halfWidth + PLAYER_HALF_WIDTH < START_X) {
                 segment.passed = true;
-                if (segment.near) {
+                if (alive && segment.near) {
                     this.addBonus(5);
                     this.showFeedback('CLOSE! +5', START_X, y);
                     this.speak('Whoa, tight one!');
@@ -607,6 +802,8 @@ function boot() {
             this.flashUntil = this.elapsed + 180;
             this.clearInput();
             this.player.anims.pause();
+            if (this.anims.exists('taggy-hit') && !this.reducedMotion.matches) this.player.play('taggy-hit');
+            if (!this.reducedMotion.matches) this.cameras.main.shake(145, 0.003);
             this.speak("Ouch... that's a tag!");
             if (!this.reducedMotion.matches) this.player.setTint(0xff8267);
         }
@@ -686,7 +883,7 @@ function boot() {
 
         playPickupSound(type) {
             if (this.muted || this.audio?.state !== 'running') return;
-            const notes = { score: [620, 830], coffee: [420, 630, 940], crash: [145, 80] };
+            const notes = { score: [620, 830], coffee: [420, 630, 940], crash: [145, 80], shot: [285] };
             notes[type].forEach((frequency, index) => {
                 const start = this.audio.currentTime + index * 0.08;
                 const tone = this.audio.createOscillator();
@@ -701,6 +898,7 @@ function boot() {
         }
 
         finish() {
+            this.finishedRuns += 1;
             const record = this.score > this.best.score;
             this.best = { score: Math.max(this.best.score, this.score), level: Math.max(this.best.level, this.level) };
             try {

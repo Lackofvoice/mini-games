@@ -1,13 +1,13 @@
 # DONE
 
-Phase 5 fixes Taggy at 25% of the playfield width. Hold Space, mouse, or touch to rise and release to fall. Standalone low and overhead hazards replace the pillars. Distance, red tag coins and near misses score. Speed ramps with distance and best score persists. Coffee now doubles coin points, and the spare tire is a hazard. The 520 ms crash lock prevents immediate restarts. See VERIFY.md for file launch, losing runs, maximum-speed passability and mobile emulation evidence.
+Phase 6 separates flight (Up, W, mouse hold, left touch) and shooting (Space, right touch). P and Escape pause. Smoothed flight, the 350 ms shot meter, three enemies, and the ten-hit SOLD stamp are in place. Missing optional artwork falls back to the original Taggy pose or generated textures. See VERIFY.md for browser evidence.
 
-Both local scripts use v=5. When game.js or embedded-assets.js changes, bump both URLs to the same new version in index.html.
+Both local scripts use v=6. Bump both URLs together after changing game.js or the embedded bundle. Place optional strips in assets/sprites and regenerate the bundle with python tools/embed-assets.py. ASSETS.md lists frame sizes and rates.
 
 # NEXT STEP
 
-Play the opening section on a physical phone and evaluate the touch timing, sound and coin routes.
+Try the opening flight and combat on a physical phone, including two-thumb input and sound.
 
 # OPEN ISSUES
 
-Physical-phone play and audible sound remain unverified. The CDN must be reachable or cached.
+Physical-phone feel and audio by ear remain unverified. Optional production sprite strips are pending. Phaser still requires a reachable CDN or browser cache.

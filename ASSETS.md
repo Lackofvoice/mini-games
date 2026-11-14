@@ -40,3 +40,20 @@ The original nine PNGs are retained byte-for-byte. Run `python tools/embed-asset
 ## Phase 4 scenery
 
 The distant trees and fences share a continuous ground band and scroll together. Foreground RVs have a separate depth and parking band. Each repeating band fits within the 600 px logical width, with clearance between adjacent copies. The road, interactive hazards, and Taggy sit above the decorative layers. The original sprite files and embedded artwork are unchanged.
+
+## Phase 6 replaceable sprite strips
+
+Place PNGs in assets/sprites and run `python tools/embed-assets.py` to make the strips available under both file and HTTP URLs. Bump the matching script versions in index.html when refreshing the bundle. The SPRITES map in game.js specifies the filename, per-frame dimensions, frame count and frames per second. All optional strips listed below use four horizontal frames. Missing optional art uses the original Taggy pose or generated artwork.
+
+| File | Each frame | FPS |
+| --- | --- | --- |
+| taggy-fly.png | 160 × 144 | 12 |
+| taggy-shoot.png | 160 × 144 | 14 |
+| taggy-hit.png | 160 × 144 | 10 |
+| drone.png | 96 × 64 | 10 |
+| bird.png | 96 × 64 | 12 |
+| cart.png | 112 × 80 | 9 |
+| boss-sold.png | 160 × 120 | 8 |
+| bill-projectile.png | 48 × 32 | 12 |
+| coin.png | 64 × 64 | 10 |
+| pop-fx.png | 64 × 64 | 16 |

@@ -102,3 +102,19 @@ Windows Edge 157 via DevTools Protocol. Tests used the actual checkout from file
 | Restart and records | PASS | Space started another run after game over. Input during the 520 ms crash lock did not restart. Best score matched localStorage and survived reload. |
 | 360 px touch | PASS | Edge touch held and moved diagonally across the playfield. Taggy rose without horizontal motion. Release restored falling. Scroll position stayed at zero and visual viewport scale stayed at one. Reduced motion held decorative scenery. |
 | Physical phone and sound by ear | NOT TESTED | Touch was emulated. The existing synthesized audio path was retained. |
+
+## Phase 6 verification
+
+Windows Edge 157 via DevTools Protocol. Tested the actual file URL and loopback HTTP.
+
+| Check | Result | Observed evidence |
+| --- | --- | --- |
+| File launch and cache bypass | PASS | Local classic scripts loaded with matching v=6 and started after cache-disabled reload. |
+| Controls and fixed position | PASS | Up and W each lifted Taggy at x=150. Held Space fired repeatedly while Taggy remained on the floor. P froze elapsed time and Escape resumed. |
+| 360 px touch and motion | PASS | Right tap shot without thrust. Left hold lifted Taggy and release restored falling. Page scroll stayed zero and viewport scale stayed one. Reduced motion held clouds and tilt still. |
+| Combat | PASS | Controlled hits checked the 350 ms cooldown, single-use projectile, one-hit drone, two-hit cart, and a fence remaining visible while the shot passed through it. Drone and cart yielded 50 total points. |
+| Maximum-speed course | PASS | A scripted flight-only controller stepped the live scene for 120 simulated seconds at the 230 px/s cap, reaching level 14. It cleared six dodge hazards, all three enemies, and the boss pattern with drops active. No shots or teleports during the route. |
+| Boss | PASS | Crossing into level five queued and spawned the ten-hit SOLD stamp. The tire drop fired. Nine hits left one HP, and the tenth awarded 250 points and removed the boss body. |
+| Art fallback and replacement | PASS | With optional files absent, fallback textures loaded without console warnings or uncaught exceptions. A temporary 384 × 64 drone strip, processed by the committed embed workflow, loaded as four 96 × 64 frames at 10 fps. The fixture was removed and the original bundle restored. |
+| Mute, pause, restart and best | PASS | Started muted. A touch gesture opened a running WebAudio context. Pause and resume held and restarted gameplay. Space during crash lock did not restart. The result best matched localStorage. |
+| Physical phone and audio by ear | NOT TESTED | Touch was emulated and sound state was inspected programmatically. |
