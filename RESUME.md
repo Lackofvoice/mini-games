@@ -1,3 +1,16 @@
+ROLLBACK_POINT: 093ccfd92cc7d6c3df53dd1c41376e2305498d18
+
+# Phase 11 visuals
+
+0. Checkpoint: clean baseline, local tag before-phase-11.
+1. Source inspection: in progress.
+2. Parallax: pending.
+3. Ground obstacles: pending.
+4. Overhead hazards: pending.
+5. Walkable road and lanes: pending.
+6. Obstacle patterns: pending.
+7. Browser verification: pending.
+8. Push and pinned preview: pending.
 # Lot Hero discovery
 
 No Lot Hero game was found in the repair tree, the old rv-sale-dash-game scaffold or master. Lot Hero appears as a locked cabinet slot. Phase 11 reserves a separate Lot Hero board.
@@ -31,3 +44,4 @@ Next action: open index.html locally and try steering release, Down descent and 
 # Leaderboard activation
 
 The Worker was redeployed with raw.githack.com in its CORS allowlist. Both boards passed read-only live GET and POST preflight checks from the preview and dealership origins. An unlisted origin still returned 403. All six Worker tests passed. The client endpoint is configured and page assets use v=14. The pinned preview requires the activation commit to be pushed.
+
