@@ -1,0 +1,50 @@
+{
+  "elapsed": 60083.28666666667,
+  "distance": 11133.404746399845,
+  "levels": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "visited": [
+    "pothole",
+    "chock",
+    "cone",
+    "box",
+    "crate",
+    "puddle"
+  ],
+  "steady": {
+    "clouds": 7.96,
+    "mountains": 13.200000000000001,
+    "treeLine": 29.04,
+    "trees": 59.4,
+    "fencing": 99,
+    "lot": 47.519999999999996,
+    "road": 132,
+    "foreground": 132
+  },
+  "advancing": {
+    "clouds": 8.06143,
+    "mountains": 14.327000000000002,
+    "treeLine": 34.49468,
+    "trees": 82.22175,
+    "fencing": 162.39375,
+    "lot": 47.519999999999996,
+    "road": 244.7,
+    "foreground": 244.7
+  },
+  "retreating": {
+    "clouds": 7.85857,
+    "mountains": 12.073,
+    "treeLine": 23.58532,
+    "trees": 36.57825,
+    "fencing": 35.606249999999996,
+    "lot": 47.519999999999996,
+    "road": 19.299999999999997,
+    "foreground": 19.299999999999997
+  },
+  "minimum": 7.85857,
+  "hp": 2
+}

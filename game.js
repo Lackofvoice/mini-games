@@ -356,8 +356,8 @@ const SCENERY = [
     ['prop_fence_segment', 220, 521, 158, 54, 0xb5aaa1, 'fencing', 0],
     ['prop_tree_pine', 377, 521, 70, 88, 0xb5aaa1, 'trees', 0],
     ['prop_fence_segment', 519, 521, 144, 54, 0xb5aaa1, 'fencing', 0],
-    ['lite_tt_v2', 152, 611, 181, 87, 0xd4c8be, 'lot', 1],
-    ['generic_bunkhouse_fifth_wheel_teal', 447, 611, 200, 87, 0xd4c8be, 'lot', 1]
+    ['lite_tt_v2', 152, 611, 181, 87, 0xd4c8be, 'lot', 2.1],
+    ['generic_bunkhouse_fifth_wheel_teal', 447, 611, 200, 87, 0xd4c8be, 'lot', 2.1]
 ];
 
 function makeScenery(scene) {
@@ -659,7 +659,6 @@ function boot() {
             this.shotPoseUntil = 0;
             this.bossQueued = false;
             this.enemyIndex = 0;
-            this.hazardIndex = 0;
             this.acceleration = GRAVITY;
             this.landedAt = -1000;
             this.score = 0;
@@ -927,8 +926,11 @@ function boot() {
             for (const { image, x, speed, shift = 0 } of this.scenery) {
                 image.x = wrap(x + shift - offset(speed), WIDTH) + Math.floor(x / WIDTH) * WIDTH;
             }
-            if (this.debugLayers) this.layerReadout.setText(Object.keys(PARALLAX).map(name =>
-                name + ' ' + (reduced ? 0 : this.layerSpeeds[name] || 0).toFixed(1) + ' px/s'));
+            if (this.debugLayers) {
+                const report = Object.keys(PARALLAX).map(name =>
+                    name + ' ' + (reduced ? 0 : this.layerSpeeds[name] || 0).toFixed(1) + ' px/s').join('\n');
+                if (this.layerReadout.text !== report) this.layerReadout.setText(report);
+            }
         }
 
         advanceScenery(distance, dt) {
