@@ -1,0 +1,8 @@
+name = "rv-dash-leaderboard"
+main = "worker.mjs"
+compatibility_date = "2026-11-13"
+
+[[kv_namespaces]]
+binding = "LEADERBOARD"
+# Run the namespace create command in README.md and replace this only in your local config.
+id = "REPLACE_WITH_KV_NAMESPACE_ID"

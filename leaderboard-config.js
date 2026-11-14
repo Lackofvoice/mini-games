@@ -1,0 +1,1 @@
+window.LEADERBOARD_URL = '';

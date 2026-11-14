@@ -38,3 +38,7 @@ After a run, choose DeWitt or Sterling Heights to enable its inventory link, or 
 The analytics helper uses an existing gtag function or dataLayer. Events are game_view, game_start, game_complete, store_selected, cta_click and pickup_collect. Completion records crash, score, level and active duration. The helper sends no personal data and loads no vendor script.
 
 The project has no build step. The intended deployment surface is a dedicated games page. No deployment was performed.
+
+## Online scores
+
+The online leaderboard is disabled in the shipped leaderboard-config.js. See [local tests and Jay deploy steps](leaderboard-worker/README.md) for the Worker and per-game board setup. Local best scores work independently.

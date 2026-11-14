@@ -4,10 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RV Dash</title>
-  <link rel="stylesheet" href="arcade.css?v=10">
-  <script defer src="vendor/phaser.min.js?v=10"></script>
-  <script defer src="game_assets/embedded-assets.js?v=10"></script>
-  <script defer src="game.js?v=10"></script>
+  <link rel="stylesheet" href="arcade.css?v=11">
+  <script defer src="vendor/phaser.min.js?v=11"></script>
+  <script defer src="game_assets/embedded-assets.js?v=11"></script>
+  <script defer src="leaderboard-config.js?v=11"></script>
+  <script defer src="leaderboard.js?v=11"></script>
+  <script defer src="game.js?v=11"></script>
 </head>
 <body>
   <main>
@@ -20,6 +22,7 @@
     </header>
     <div id="intro">
       <p id="motion-note">Reduced motion: calmer scenery.</p>
+      <button id="view-scores-start" type="button">View scores</button>
       <ul id="legend" aria-label="Track items"></ul>
     </div>
     <div class="bar">
@@ -58,8 +61,20 @@
       <p id="store-status" role="status">Select a store to enable the inventory link.</p>
       <div class="result-actions">
         <a id="inventory" class="cta primary" hidden>Browse inventory</a>
+        <button id="view-scores-result" type="button">View scores</button>
         <button id="replay" class="primary">Play again</button>
       </div>
+    </section>
+    <section id="leaderboard" aria-labelledby="board-title" hidden>
+      <header><h2 id="board-title" tabindex="-1">Leaderboard</h2><button id="close-board" type="button">Close</button></header>
+      <p id="board-status" role="status"></p>
+      <form id="initials-form" hidden novalidate>
+        <label for="initials">Three arcade initials</label>
+        <input id="initials" name="initials" maxlength="3" autocomplete="off" autocapitalize="characters" spellcheck="false">
+        <button id="submit-score" class="primary" type="submit">Submit</button>
+        <button id="skip-score" type="button">Skip</button>
+      </form>
+      <table><thead><tr><th scope="col">Rank</th><th scope="col">Initials</th><th scope="col">Score</th></tr></thead><tbody id="board-rows"></tbody></table>
     </section>
   </main>
 </body>

@@ -1,13 +1,15 @@
+# Lot Hero discovery
+
+No Lot Hero game was found in the repair tree, the old rv-sale-dash-game scaffold, or master, including a filename scan and the old scaffold README. The Worker reserves independent rv-dash and lot-hero boards. Only RV Dash is wired into the client.
+
 # DONE
 
-Phase 10 adds a dark red arcade frame, system typography, best-score display, controls strip, animated buttons and a new-best result badge. Reduced motion suppresses the page animations. The same Phaser 3.80.1 build is bundled locally under its MIT license, so file launch also works offline. Canvas sizing, input handlers and gameplay timing are unchanged.
-
-The stylesheet and all three script URLs use v=10. Bump these together on the next release.
+Phase 11 adds a KV Worker and a shared leaderboard client with v=11 cache busting. The shipped URL is empty. Local best scores retain the Phase 10 storage key. Gameplay tuning, source sprites and canvas sizing are unchanged.
 
 # NEXT STEP
 
-Try the redesigned screens on a physical phone and check button feel and game audio.
+Jay deploy steps are in leaderboard-worker/README.md. Deployment is NOT done.
 
 # OPEN ISSUES
 
-Physical-phone use and audio by ear remain unverified.
+Real Cloudflare deployment, production KV consistency, live-site CORS, physical-phone interaction and audio by ear remain unverified.

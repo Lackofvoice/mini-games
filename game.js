@@ -392,6 +392,8 @@ function boot() {
             }
             this.player = this.add.sprite(START_X, FLOOR_Y, 'taggy-idle-right', 0).setScale(0.5).setDepth(5);
             this.muted = true;
+            this.leaderboard = window.RVLeaderboard.attach('rv-dash');
+            this.leaderboard.ready();
             this.best = readBest();
             byId('page-best').textContent = this.best.score;
             this.segments = [];
@@ -556,6 +558,7 @@ function boot() {
 
         start() {
             if (this.state !== STATES.AWAITING_START && this.state !== STATES.GAME_OVER) return;
+            this.leaderboard.start();
             for (const segment of this.segments) {
                 segment.view.destroy();
                 for (const drop of segment.drops) drop.destroy();
@@ -1186,6 +1189,7 @@ function boot() {
             byId('effects').hidden = true;
             byId('speech').hidden = true;
             byId('result-title').focus();
+            this.leaderboard.finish(this.score);
             track('game_complete', {
                 result: 'crash', score: this.score, level: this.level,
                 duration_seconds: Math.round(this.crashAt / 1000)

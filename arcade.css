@@ -169,3 +169,13 @@ canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; 
   button:not(:disabled):is(:hover, :focus-visible)::after,
   .cta:is(:hover, :focus-visible)::after { animation: none; }
 }
+
+#leaderboard { margin-top: 16px; padding: 16px; background: var(--panel); border: 1px solid #805162; border-radius: 14px; }
+#leaderboard header, #initials-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+#leaderboard header { justify-content: space-between; }
+#leaderboard h2 { margin: 0; font-size: 1.4rem; }
+#leaderboard table { width: 100%; margin-top: 12px; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+#leaderboard th, #leaderboard td { text-align: left; padding: 6px; border-bottom: 1px solid var(--line); }
+#leaderboard th:last-child, #leaderboard td:last-child { text-align: right; }
+#initials-form label { flex-basis: 100%; }
+#initials { min-height: 44px; width: 5.5rem; padding: 6px; border: 1px solid #805162; border-radius: 8px; background: var(--page); color: var(--cream); font: 800 1.15rem system-ui; text-transform: uppercase; letter-spacing: .15em; }

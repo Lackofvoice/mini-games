@@ -183,3 +183,17 @@ Windows Edge 157 headless via DevTools Protocol. Tested desktop at 900 × 1100 a
 | Physical phone and audible audio | NOT TESTED | The narrow screen was emulated and sound state was inspected programmatically. |
 
 The Phase 10 capture folder includes the fourteen screenshots and frame-times.json.
+
+## Phase 11 verification
+
+Lot Hero was absent from the repair tree, scaffold and master. The Worker has distinct RV Dash and Lot Hero keys.
+
+- **PASS, unit tests.** node --test leaderboard-worker/worker.test.mjs reported 5 tests, 5 passed, 0 failed. Covered malformed, blocked and look-alike initials, integer limits, the sixth attempt, content type and size, invalid board, sorted top 25 and tie order.
+- **PASS, local runtime.** Wrangler 4.162.0 ran in local mode with simulated KV. No login, deploy or production resource operations were run.
+- **PASS, HTTP checks.** Requests to the same handler through the Node mock produced empty GET 200, valid POST 201, invalid initials 400, blocked look-alike 400, over-cap 400, oversized 413, sixth submit 429, and unknown game 404. Independent GETs returned each board's own score.
+- **PASS, Edge.** The locally configured Wrangler Worker accepted keyboard submissions at desktop and 360 px, persisted rows across reload, prefilled initials and ranked the second higher score first. Screenshots cover start, empty board, initials, populated board and offline state at both widths. Escape and Skip closed the panel. Reduced motion stayed static. No uncaught exceptions.
+- **PASS, offline and file.** The default empty config produced no leaderboard requests on file launch. A dead port showed the offline message while keeping the local best and allowing replay.
+- **PASS, frame sample.** A 12.016-second maximum-speed run in headless Edge recorded 721 intervals, mean 16.67 ms, p95 16.70 ms, p99 and max 16.80 ms, and none above 20 ms. Phase 10 mean and p95 were 16.69 and 16.80 ms. No simulation changes were made.
+- **NOT TESTED.** Real deployment, real KV consistency, live-site CORS, physical phone, and audio by ear.
+
+Secret scan before commit used `git grep --cached -l -i -E PATTERN -- ':!*.png'` on tracked text and `git diff --cached --unified=0 | rg --count -i PATTERN` on the staged patch. Patterns covered GitHub/AWS token prefixes, private-key headers, token/account/API-key assignments, emails, 32-hex identifiers and IPv4 literals. Reviewed matches were loopback addresses needed for local testing and incidental embedded-art text. No credentials, account IDs, real namespace IDs or personal data were found. The namespace configuration and Wrangler state are ignored.
