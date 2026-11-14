@@ -3,7 +3,7 @@ ROLLBACK_POINT: 093ccfd92cc7d6c3df53dd1c41376e2305498d18
 # Phase 11 visuals
 
 0. Checkpoint: clean baseline, local tag before-phase-11.
-1. Source inspection: in progress.
+1. Source inspection: done. drawScenery offsets cached sky/cloud/hill/lot/road textures and scenery images. scrollSpeed(distance) caps the ramp at 230 px/s. moveHorizontally eases keyboard or touch velocity. advance selects a pattern; spawnPattern draws its sprite and coins, and checkPattern uses inset rectangles. The old upper hazard is a procedural branch alongside a sign. makeTextures draws the track and the floor clamps above its road line.
 2. Parallax: pending.
 3. Ground obstacles: pending.
 4. Overhead hazards: pending.
