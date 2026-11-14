@@ -288,6 +288,14 @@ function makeTextures(scene) {
         }
         rect(0x33374a, 0, 168, WIDTH, 12);
     });
+    texture('tree-line', WIDTH, 85, () => {
+        const random = seeded(121);
+        for (let x = 15; x < WIDTH - 12; x += 14 + random() * 11) {
+            const height = 21 + random() * 42;
+            graphics.fillStyle(0x55536b).fillTriangle(x - 11, 79, x, 79 - height, x + 11, 79);
+        }
+        rect(0x55536b, 0, 77, WIDTH, 8);
+    });
     texture('lot', WIDTH, 150, () => {
         rect(0x444550, 0, 0, WIDTH, 150);
         rect(0x66616a, 0, 14, WIDTH, 4);
@@ -310,14 +318,24 @@ function makeTextures(scene) {
     graphics.destroy();
 }
 
+const PARALLAX = { clouds: .03, mountains: .10, treeLine: .22, trees: .45, fencing: .75, lot: .36, road: 1, foreground: 1 };
+const wrap = (x, period) => ((x % period) + period) % period;
+function seeded(seed) {
+    let state = seed >>> 0;
+    return () => {
+        state = (Math.imul(1664525, state) + 1013904223) >>> 0;
+        return state / 4294967296;
+    };
+}
+
 // Trees and fences share a distant band. RVs sit in a separate foreground band.
 const SCENERY = [
-    ['prop_tree_pine', 68, 521, 72, 91, 0xb5aaa1, 0.18, 0],
-    ['prop_fence_segment', 220, 521, 158, 54, 0xb5aaa1, 0.18, 0],
-    ['prop_tree_pine', 377, 521, 70, 88, 0xb5aaa1, 0.18, 0],
-    ['prop_fence_segment', 519, 521, 144, 54, 0xb5aaa1, 0.18, 0],
-    ['lite_tt_v2', 152, 611, 181, 87, 0xd4c8be, 0.36, 1],
-    ['generic_bunkhouse_fifth_wheel_teal', 447, 611, 200, 87, 0xd4c8be, 0.36, 1]
+    ['prop_tree_pine', 68, 521, 72, 91, 0xb5aaa1, 'trees', 0],
+    ['prop_fence_segment', 220, 521, 158, 54, 0xb5aaa1, 'fencing', 0],
+    ['prop_tree_pine', 377, 521, 70, 88, 0xb5aaa1, 'trees', 0],
+    ['prop_fence_segment', 519, 521, 144, 54, 0xb5aaa1, 'fencing', 0],
+    ['lite_tt_v2', 152, 611, 181, 87, 0xd4c8be, 'lot', 1],
+    ['generic_bunkhouse_fifth_wheel_teal', 447, 611, 200, 87, 0xd4c8be, 'lot', 1]
 ];
 
 function makeScenery(scene) {
@@ -327,7 +345,7 @@ function makeScenery(scene) {
         const scale = Math.min(maxWidth / frame.width, maxHeight / frame.height);
         return [-1, 0, 1].map((copy) => ({
             image: scene.add.image(x + copy * WIDTH, y, key).setOrigin(0.5, 1).setScale(scale).setTint(tint).setDepth(depth),
-            x: x + copy * WIDTH,
+            x: x + copy * WIDTH, scale,
             speed
         }));
     });
@@ -387,6 +405,12 @@ function boot() {
             this.trail = this.add.graphics().setDepth(4.5);
             this.trailPoints = [];
             this.nextTrail = 0;
+            this.treeLine = this.add.tileSprite(0, 421, WIDTH, 85, 'tree-line').setOrigin(0).setDepth(-2.5);
+            this.layerOffsets = {};
+            this.layerSpeeds = {};
+            this.debugLayers = false;
+            this.layerReadout = this.add.text(8, 8, '', { fontFamily: 'monospace', fontSize: '17px',
+                backgroundColor: '#14151b', color: '#ffffff', padding: { x: 6, y: 5 } }).setDepth(20).setVisible(false);
             this.scenery = makeScenery(this);
             this.road = this.add.tileSprite(0, GROUND - 24, WIDTH, HEIGHT - GROUND + 24, 'track').setOrigin(0).setDepth(2);
             for (const [key, [, , , count, fps]] of Object.entries(SPRITES)) {
@@ -462,6 +486,12 @@ function boot() {
                     if (this.state !== STATES.PLAYING || this.crashUntil || event.target !== byId('playfield')) return;
                     event.preventDefault();
                     if (!event.repeat) this.downHeld = true;
+                    return;
+                }
+                if (code === 'KeyP' && event.shiftKey) {
+                    if (!event.repeat) this.debugLayers = !this.debugLayers;
+                    this.layerReadout.setVisible(this.debugLayers);
+                    this.drawScenery();
                     return;
                 }
                 if (code === 'KeyP' || code === 'Escape') {
@@ -606,6 +636,8 @@ function boot() {
             this.newBest = false;
             this.elapsed = 0;
             this.scroll = 0;
+            this.layerOffsets = {};
+            this.layerLevel = 0;
             this.nextPattern = 385;
             this.patternIndex = 0;
             this.coffeeUntil = 0;
@@ -710,6 +742,7 @@ function boot() {
             this.fly(dt);
             const distance = scrollSpeed(this.scroll) * dt;
             this.scroll += distance;
+            this.advanceScenery(distance, dt);
             this.score = Math.floor(this.scroll / 20) + this.bonus;
             const level = 1 + Math.floor(this.scroll / LEVEL_DISTANCE);
             if (level > this.level) {
@@ -822,13 +855,38 @@ function boot() {
                 }
             }
             this.clouds.setAlpha(stage === 'night' ? 0.38 : 0.85);
-            const scroll = reduced ? 0 : this.scroll;
-            this.clouds.tilePositionX = scroll * 0.08;
-            this.hills.tilePositionX = scroll * 0.16;
-            this.lot.tilePositionX = scroll * 0.52;
-            this.road.tilePositionX = scroll;
-            for (const { image, x, speed } of this.scenery) {
-                image.x = x - (scroll * speed) % WIDTH;
+            const offset = (name) => this.layerOffsets[name] || 0;
+            this.clouds.tilePositionX = offset('clouds');
+            this.hills.tilePositionX = offset('mountains');
+            this.treeLine.tilePositionX = offset('treeLine');
+            this.lot.tilePositionX = offset('lot');
+            this.road.tilePositionX = offset('road');
+            if (this.layerLevel !== this.level) {
+                this.layerLevel = this.level;
+                for (const layer of ['trees', 'fencing']) {
+                    const random = seeded(this.level * 17 + (layer === 'trees' ? 1 : 2));
+                    const variants = Array.from({ length: 2 }, () => [random() * 62 - 31, .86 + random() * .23]);
+                    let index = 0;
+                    for (const item of this.scenery.filter(({ speed }) => speed === layer)) {
+                        [item.shift, item.factor] = variants[Math.floor(index++ / 3)];
+                        item.image.setScale(item.scale * item.factor);
+                    }
+                }
+            }
+            for (const { image, x, speed, shift = 0 } of this.scenery) {
+                image.x = wrap(x + shift - offset(speed), WIDTH) + Math.floor(x / WIDTH) * WIDTH;
+            }
+            if (this.debugLayers) this.layerReadout.setText(Object.keys(PARALLAX).map(name =>
+                name + ' ' + (reduced ? 0 : this.layerSpeeds[name] || 0).toFixed(1) + ' px/s'));
+        }
+
+        advanceScenery(distance, dt) {
+            if (this.reducedMotion.matches) return;
+            for (const [name, factor] of Object.entries(PARALLAX)) {
+                const motion = name === 'lot' ? 0 : this.horizontalSpeed * factor * factor * .46;
+                const speed = Math.max(2, distance / dt * factor + motion + (name === 'clouds' ? 4 : 0));
+                this.layerSpeeds[name] = speed;
+                this.layerOffsets[name] = (this.layerOffsets[name] || 0) + speed * dt;
             }
         }
 
