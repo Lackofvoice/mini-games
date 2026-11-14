@@ -1,4 +1,4 @@
-/* UI skin only. Canvas sizing and game input remain in their existing owners. */
+/* Synthwave cabinet colors, typography and responsive layout. */
 :root {
   --page: #090b17;
   --panel: #10142b;
@@ -137,4 +137,21 @@ button.primary, .cta.primary, .primary .key-face {
 @media (prefers-reduced-motion: reduce) {
   button, .cta, .shop-key, .slot { transition: none; }
   :is(button,.cta,.shop-key):active { transform: none; }
+}
+
+/* Keep the primary actions and full 3:4 course in the first viewport. */
+main { margin-top: max(10px, env(safe-area-inset-top)); }
+.masthead { padding-bottom: 6px; }
+.masthead h1 { font-size: clamp(2rem, 6vw, 3.2rem); }
+.cabinet-layout { margin-top: 9px; }
+.instrument { gap: 4px; padding-bottom: 4px; margin-bottom: 4px; }
+.bar { margin: 5px 0 7px; }
+#game-area { position: relative; padding: 6px; }
+#playfield { width: min(100%, max(210px, calc((100dvh - 252px) * .75))); }
+#intro, #result, #leaderboard-mount { margin-top: 10px; }
+#auto-fire { white-space: nowrap; }
+@media (max-width: 430px) {
+  .instrument { align-items: center; }
+  .utility { gap: 3px; }
+  .utility button { padding-inline: 6px; }
 }

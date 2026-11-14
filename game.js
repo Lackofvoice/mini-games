@@ -14,9 +14,22 @@ const ROAD_LANES = [633, 688, 743];
 const FLOOR_Y = ROAD_LANES[1];
 const GROUND_MOVEMENT_MODE = 'free-road';
 const ROAD_DEPTH_SPEED = 155; // logical px/s
-const JUMP_SPEED = 265; // initial logical px/s upward
+const JUMP_SPEED = 300; // initial logical px/s upward
+const COYOTE_TIME_MS = 120;
+const JUMP_BUFFER_MS = 120;
+const TAP_MS = 140;
+const TAP_SLOP = 6;
+const AUTO_FIRE_DEFAULT = true;
+const AUTO_FIRE_KEY = 'rv-dash-auto-fire';
 const FLIGHT_HOLD_MS = 145;
 const ROAD_SHEET = 'road-obstacle-sheet';
+const LOT_LIFE_ENABLED = false;
+const OPTIONAL_SHEETS = {
+    'rv-lot-set': [2, 2, 256, 128],
+    'foliage-set': [4, 2, 128, 128],
+    'overhead-hazard': [4, 1, 128, 128],
+    'lot-life': [4, 2, 128, 128]
+};
 // Family, sheet bounds (within its cell), road clearance in logical pixels.
 const ROAD_ART = {
     cone: [0, 22, 19, 91, 107, 32], barrier: [1, 5, 26, 116, 101, 43],
@@ -81,7 +94,7 @@ const ROAD_PATTERNS = [
     { level: 1, items: [['cone', 0, 0], ['cone', 0, 62], ['cone', 0, 124]] },
     { level: 1, items: [['pothole', 0, 0]] },
     { level: 1, items: [['box', 0, 0]] },
-    { level: 1, items: [['chock', 0, 0]] },
+    { level: 1, items: [['tread', 0, 0]] },
     { level: 2, items: [['cone', 0, 0], ['cone', 1, 110], ['cone', 0, 220]] },
     { level: 2, items: [['pothole', 0, 0], ['pothole', 1, 94], ['pothole', 0, 178]] },
     { level: 2, items: [['crate', 0, 0], ['puddle', 0, 98]] },
@@ -394,13 +407,61 @@ const SCENERY = [
     ['generic_bunkhouse_fifth_wheel_teal', 447, 611, 200, 87, 0xd4c8be, 'lot', 2.1]
 ];
 
+function registerOptionalFrames(scene) {
+    for (const [key, [columns, rows, width, height]] of Object.entries(OPTIONAL_SHEETS)) {
+        if (!scene.textures.exists(key)) continue;
+        const sheet = scene.textures.get(key);
+        const image = sheet.getSourceImage();
+        if (image.width !== columns * width || image.height !== rows * height) continue;
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+        for (let index = 0; index < columns * rows; index++) {
+            const x = index % columns * width;
+            const y = Math.floor(index / columns) * height;
+            context.clearRect(0, 0, width, height);
+            context.drawImage(image, x, y, width, height, 0, 0, width, height);
+            const rgba = context.getImageData(0, 0, width, height).data;
+            let left = width, top = height, right = -1, bottom = -1;
+            for (let row = 0; row < height; row++) {
+                for (let col = 0; col < width; col++) {
+                    if (rgba[(row * width + col) * 4 + 3] < 32) continue;
+                    left = Math.min(left, col);
+                    right = Math.max(right, col);
+                    top = Math.min(top, row);
+                    bottom = Math.max(bottom, row);
+                }
+            }
+            if (right >= left) sheet.add(index, 0, x + left, y + top, right - left + 1, bottom - top + 1);
+        }
+    }
+}
+
 function makeScenery(scene) {
-    return SCENERY.flatMap(([key, x, y, maxWidth, maxHeight, tint, speed, depth]) => {
-        if (!scene.textures.exists(key)) return [];
-        const frame = scene.textures.getFrame(key);
+    const foliage = [0, 2, 3, 4, 1, 5, 2];
+    const rvLot = [0, 1, 2, 3].map((frame) =>
+        ['rv-lot-set', 75 + frame * 150, 579, 140, 74, 0xd4c8be, 'lot', 1, frame]);
+    const hasFrame = (key, frame) => scene.textures.exists(key) && scene.textures.get(key).has(frame);
+    const replaceRvs = rvLot.some(([key, , , , , , , , frame]) => hasFrame(key, frame));
+    const scenery = SCENERY.flatMap((entry, index) => {
+        if (entry[6] === 'lot') return replaceRvs ? [] : [entry];
+        const frame = foliage[index];
+        return [hasFrame('foliage-set', frame) ? ['foliage-set', ...entry.slice(1), frame] : entry];
+    });
+    if (replaceRvs) scenery.push(...rvLot);
+    scenery.push(['foliage-set', 117, 533, 48, 24, 0xdac7ae, 'trees', 0, 6],
+        ['foliage-set', 345, 529, 59, 24, 0xe2c9ac, 'trees', 0, 7]);
+    if (LOT_LIFE_ENABLED) {
+        scenery.push(['lot-life', 66, 607, 33, 48, 0xffffff, 'lot', 1.1, 0],
+            ['lot-life', 309, 602, 33, 48, 0xffffff, 'lot', 1.1, 4]);
+    }
+    return scenery.flatMap(([key, x, y, maxWidth, maxHeight, tint, speed, depth, index]) => {
+        if (!hasFrame(key, index ?? '__BASE')) return [];
+        const frame = scene.textures.getFrame(key, index);
         const scale = Math.min(maxWidth / frame.width, maxHeight / frame.height);
         return [-1, 0, 1].map((copy) => ({
-            image: scene.add.image(x + copy * WIDTH, y, key).setOrigin(0.5, 1).setScale(scale).setTint(tint).setDepth(depth),
+            image: scene.add.image(x + copy * WIDTH, y, key, index).setOrigin(0.5, 1).setScale(scale).setTint(tint).setDepth(depth),
             x: x + copy * WIDTH, scale,
             speed
         }));
@@ -424,8 +485,11 @@ function boot() {
                 byId('status').textContent = 'Could not load: ' + [...this.loadFailures].join(', ');
             };
             this.load.on('loaderror', ({ key }) => {
-                if (!SPRITES[key]?.[0].startsWith('assets/sprites/')) fail(key);
+                if (SPRITES[key] && !SPRITES[key][0].startsWith('assets/sprites/')) fail(key);
             });
+            for (const key of Object.keys(OPTIONAL_SHEETS)) {
+                if (assets[key]) this.load.image(key, assets[key]);
+            }
             for (const [key, [path, width, height]] of Object.entries(SPRITES)) {
                 if (!assets[key]) {
                     if (!path.startsWith('assets/sprites/')) fail(key);
@@ -445,11 +509,17 @@ function boot() {
             this.moveKeys = new Set();
             this.hp = START_HP;
             this.shootHeld = false;
+            this.autoFire = AUTO_FIRE_DEFAULT;
+            try {
+                const preference = localStorage.getItem(AUTO_FIRE_KEY);
+                if (preference !== null) this.autoFire = preference === 'true';
+            } catch {}
             this.pointerId = null;
             this.shots = [];
             this.finishedRuns = 0;
             this.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
             makeTextures(this);
+            registerOptionalFrames(this);
             if (this.textures.exists(ROAD_SHEET)) {
                 const sheet = this.textures.get(ROAD_SHEET);
                 const image = sheet.getSourceImage();
@@ -536,6 +606,15 @@ function boot() {
             this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
                 this.audio?.close().catch(() => {});
             });
+            const autoFireButton = byId('auto-fire');
+            const updateAutoFire = () => autoFireButton.setAttribute('aria-pressed', String(this.autoFire));
+            updateAutoFire();
+            on(autoFireButton, 'click', () => {
+                this.autoFire = !this.autoFire;
+                updateAutoFire();
+                try { localStorage.setItem(AUTO_FIRE_KEY, String(this.autoFire)); } catch {}
+                if (this.state === STATES.PLAYING) byId('playfield').focus({ preventScroll: true });
+            });
             on(byId('start'), 'click', () => this.start());
             on(byId('replay'), 'click', () => this.start());
             on(byId('pause'), 'click', () => {
@@ -589,7 +668,8 @@ function boot() {
                 } else if (code === 'Space') {
                     this.jumpHeld = true;
                     this.jumpStarted = this.elapsed;
-                    this.jump();
+                    this.jumpBufferedUntil = this.elapsed + JUMP_BUFFER_MS;
+                    this.tryJump();
                 } else {
                     this.shootHeld = true;
                     this.fire();
@@ -612,10 +692,13 @@ function boot() {
                 field.focus({ preventScroll: true });
                 const rect = field.getBoundingClientRect();
                 if (event.pointerType === 'touch' && event.clientX >= rect.left + rect.width / 2) {
-                    this.fire();
+                    if (this.rightTap) return;
+                    field.setPointerCapture(event.pointerId);
+                    this.rightTap = { id: event.pointerId, x: event.clientX, y: event.clientY, at: performance.now() };
                 } else if (this.pointerId === null) {
                     field.setPointerCapture(event.pointerId);
                     this.pointerId = event.pointerId;
+                    this.flightTap = { id: event.pointerId, x: event.clientX, y: event.clientY, at: performance.now() };
                     if (event.pointerType === 'touch') {
                         this.touchStartX = event.clientX;
                         this.touchStartY = event.clientY;
@@ -626,6 +709,10 @@ function boot() {
                 }
             });
             on(field, 'pointermove', (event) => {
+                const tap = this.pointerId === event.pointerId ? this.flightTap : this.rightTap;
+                if (tap?.id === event.pointerId && Math.hypot(event.clientX - tap.x, event.clientY - tap.y) > TAP_SLOP) {
+                    tap.dragged = true;
+                }
                 if (event.pointerId !== this.pointerId || this.touchTargetX == null) return;
                 if (this.player.y >= this.roadDepth) {
                     const dy = event.clientY - this.touchStartY;
@@ -636,6 +723,13 @@ function boot() {
             });
             for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) {
                 on(field, event, (pointer) => {
+                    const slot = this.rightTap?.id === pointer.pointerId ? 'rightTap' : 'flightTap';
+                    const tap = this[slot];
+                    if (tap?.id === pointer.pointerId) {
+                        this[slot] = null;
+                        if (event === 'pointerup' && !tap.dragged && performance.now() - tap.at <= TAP_MS
+                            && Math.hypot(pointer.clientX - tap.x, pointer.clientY - tap.y) <= TAP_SLOP) this.fire();
+                    }
                     if (this.pointerId === pointer.pointerId) {
                         this.pointerId = null;
                         this.touchTargetX = null;
@@ -685,13 +779,18 @@ function boot() {
             this.downHeld = false;
             this.roadKeys.clear();
             this.jumpHeld = false;
+            this.jumpBufferedUntil = -Infinity;
             this.touchDepthDirection = 0;
             this.moveKeys.clear();
             this.touchTargetX = null;
             this.shootHeld = false;
             const field = byId('playfield');
-            if (this.pointerId !== null && field.hasPointerCapture(this.pointerId)) field.releasePointerCapture(this.pointerId);
+            for (const id of [this.pointerId, this.rightTap?.id]) {
+                if (id != null && field.hasPointerCapture(id)) field.releasePointerCapture(id);
+            }
             this.pointerId = null;
+            this.flightTap = null;
+            this.rightTap = null;
         }
 
         start() {
@@ -719,6 +818,7 @@ function boot() {
             this.enemyIndex = 0;
             this.acceleration = GRAVITY;
             this.landedAt = -1000;
+            this.jumpGroundedAt = 0;
             this.score = 0;
             this.level = 1;
             this.bonus = 0;
@@ -787,7 +887,7 @@ function boot() {
             document.body.classList.toggle('is-paused', this.state === PAUSED);
             byId('status').textContent = this.state === PAUSED ? 'Run paused. Select Resume to continue.' : '';
             byId('result').hidden = this.state !== GAME_OVER;
-            byId('game-area').hidden = this.state === GAME_OVER;
+            byId('replay').hidden = this.state !== GAME_OVER;
         }
 
         updateStats() {
@@ -869,7 +969,7 @@ function boot() {
                 }
             }
             this.updateHealthPickup(distance);
-            if (this.shootHeld) this.fire();
+            if (this.autoFire || this.shootHeld) this.fire();
             for (const segment of this.segments) {
                 segment.age += step;
                 segment.view.x -= distance * (segment.pattern === BOSS ? 0.78 : 1);
@@ -901,9 +1001,15 @@ function boot() {
             });
         }
 
-        jump() {
-            if (this.player.y < this.roadDepth) return;
-            this.verticalSpeed = -JUMP_SPEED;
+        tryJump() {
+            if (this.elapsed > this.jumpBufferedUntil || this.elapsed - this.jumpGroundedAt > COYOTE_TIME_MS) return;
+            this.jumpBufferedUntil = -Infinity;
+            this.launchJump(JUMP_SPEED);
+        }
+
+        launchJump(speed) {
+            this.jumpGroundedAt = -Infinity;
+            this.verticalSpeed = -speed;
             this.acceleration = GRAVITY;
             this.depthSpeed = 0;
         }
@@ -933,6 +1039,7 @@ function boot() {
                 && (this.touchTargetX == null || this.elapsed >= this.touchLiftAt)
                 || this.jumpHeld && airborne && this.elapsed - this.jumpStarted >= FLIGHT_HOLD_MS
                 || this.elapsed < this.coffeeLiftUntil;
+            if (!airborne) this.jumpGroundedAt = this.elapsed;
             const assist = airborne && this.downHeld && !thrusting;
             const target = GRAVITY - (thrusting ? THRUST : 0) + (assist ? DESCENT_BONUS : 0);
             if (!assist) this.acceleration = Math.min(this.acceleration, GRAVITY);
@@ -946,6 +1053,10 @@ function boot() {
             if (y !== this.player.y) {
                 if (y > floor && previousY < floor) this.landedAt = this.elapsed;
                 this.verticalSpeed = 0;
+                if (y > floor) {
+                    this.jumpGroundedAt = this.elapsed;
+                    this.tryJump();
+                }
             }
             const reduced = this.reducedMotion.matches;
             if (thrusting && !reduced && this.elapsed >= this.nextExhaust) {
@@ -1083,7 +1194,7 @@ function boot() {
         }
 
         fire() {
-            if (this.elapsed < this.nextShot || this.crashUntil) return;
+            if (this.state !== STATES.PLAYING || this.elapsed < this.nextShot || this.crashUntil) return;
             this.nextShot = this.elapsed + SHOT_MS;
             this.shotPoseUntil = this.elapsed + 3 * 1000 / 14;
             if (this.elapsed >= this.hitPoseUntil && this.anims.exists('taggy-shoot') && !this.reducedMotion.matches) {
@@ -1164,9 +1275,10 @@ function boot() {
                 const lane = offset == null ? null : (openLane + 1 + offset) % 3;
                 const depth = lane == null ? null : ROAD_LANES[lane] + this.patternRandom() * 12 - 6;
                 const scale = lane == null ? 1 : LANE_SCALE[lane];
-                const native = ROAD_ART[family];
+                const sheetFamily = family === 'box' ? 'crate' : family;
+                const native = ROAD_ART[sheetFamily];
                 const sheetFrame = native && this.textures.exists(ROAD_SHEET)
-                    && this.textures.get(ROAD_SHEET).has(family) ? family : null;
+                    && this.textures.get(ROAD_SHEET).has(sheetFamily) ? sheetFamily : null;
                 const width = (sheetFrame ? native[3] * .66 : art.width) * scale;
                 const height = lane == null ? 202 : sheetFrame ? width * native[4] / native[3] : art.height * scale;
                 this.spawnPattern({ key: 'obstacle-' + art.key, art, roadLane: lane,
@@ -1185,8 +1297,12 @@ function boot() {
                 && !pattern.hp ? entry.type === 'overhead' : entry.family === family);
             const art = pattern.art || (choices.length ? choices[index % choices.length] : null);
             const texture = art && this.textures.exists('obstacle-' + art.key) ? 'obstacle-' + art.key : pattern.key;
-            const hazard = this.add.sprite(0, pattern.y, pattern.sheetFrame ? ROAD_SHEET : texture,
-                pattern.sheetFrame || this.firstFrame(texture));
+            const overhead = 'overhead-hazard';
+            const overheadFrame = index % 4;
+            const useOverhead = art?.type === 'overhead' && this.textures.exists(overhead)
+                && this.textures.get(overhead).has(overheadFrame);
+            const hazard = this.add.sprite(0, pattern.y, useOverhead ? overhead : pattern.sheetFrame ? ROAD_SHEET : texture,
+                useOverhead ? overheadFrame : pattern.sheetFrame || this.firstFrame(texture));
             if (!this.anims.exists(pattern.key)) hazard.setDisplaySize(pattern.width, pattern.height);
             if (this.anims.exists(pattern.key) && !this.reducedMotion.matches) hazard.play(pattern.key);
             const hanging = art?.type === 'overhead';
@@ -1221,7 +1337,9 @@ function boot() {
             const road = art && !hanging && pattern.depth != null;
             const laneMatches = !road || Math.abs(pattern.depth - this.roadDepth) <= 22;
             // Use the opaque cap or base, with a small forgiving inset on each side.
-            const halfWidth = hanging ? hazard.displayWidth * hanging.hit[2] / 2 : art ? pattern.width * art.hit[2] / 2 : pattern.width * (pattern.key === 'tire' ? 0.36 : 0.42);
+            const halfWidth = hanging ? hazard.displayWidth * hanging.hit[2] / 2
+                : pattern.sheetFrame ? pattern.width * .43
+                    : art ? pattern.width * art.hit[2] / 2 : pattern.width * (pattern.key === 'tire' ? 0.36 : 0.42);
             const halfHeight = hanging ? hazard.displayHeight * hanging.hit[3] / 2 : art ? pattern.height * art.hit[3] / 2 : pattern.height * (pattern.key === 'tire' ? 0.36 : 0.44);
             if (pattern.key === 'tire' && !this.reducedMotion.matches) hazard.rotation = this.scroll / 48;
             const alive = segment.hp !== 0;
@@ -1271,7 +1389,10 @@ function boot() {
             if (coffee) {
                 this.coffeeUntil = this.elapsed + COFFEE_MS;
                 this.coffeeLiftUntil = this.elapsed + 360;
-                this.jump();
+                if (this.player.y >= this.roadDepth) {
+                    this.launchJump(265);
+                    this.jumpBufferedUntil = -Infinity;
+                }
                 this.showFeedback('COFFEE x2', x, coin.y);
                 this.speak('Coffee break? Maybe later.');
             } else {
@@ -1483,7 +1604,7 @@ function boot() {
             this.setRoundState(STATES.GAME_OVER);
             byId('effects').hidden = true;
             byId('speech').hidden = true;
-            byId('result-title').focus();
+            byId('replay').focus({ preventScroll: true });
             this.leaderboard.finish(this.score);
             track('game_complete', {
                 result: 'crash', score: this.score, level: this.level,
