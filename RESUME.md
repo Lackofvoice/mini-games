@@ -45,3 +45,11 @@ Next action: open index.html locally and try steering release, Down descent and 
 
 The Worker was redeployed with raw.githack.com in its CORS allowlist. Both boards passed read-only live GET and POST preflight checks from the preview and dealership origins. An unlisted origin still returned 403. All six Worker tests passed. The client endpoint is configured and page assets use v=14. The pinned preview requires the activation commit to be pushed.
 
+
+# Phase 11b
+
+Started at 5c3a2efcd25d758913c4cc9ff05ce560816a714a. Free-road is the default in GROUND_MOVEMENT_MODE. Up/W and Down/S walk across the road while grounded. Q/E still steps between three fallback positions. Space taps jump, holds fly, and F shoots. Coffee keeps its multiplier and gives an initial launch. Airborne Down/S assists descent with lift taking priority. Mouse hold flies; touch retains left hold for lift and right taps for shots, with a vertical left drag from the road steering depth.
+
+The supplied source is assets/road-obstacles-128.png. The offline derivative is game_assets/road-obstacle-sheet.js. The game validates the 512 × 256 dimensions, maps eight cropped frames, and keeps existing PNG fallbacks. The other untracked art folders were left outside the commit. Page assets use v=16.
+
+Next action: try free road movement and short jumps on a physical phone or desktop, and judge depth spacing and obstacle difficulty. See VERIFY.md for Edge, fallback and deterministic group evidence.

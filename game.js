@@ -12,6 +12,19 @@ const DESCENT_BONUS = GRAVITY * 0.08; // logical px/s², added to gravity
 const CEILING_Y = 36;
 const ROAD_LANES = [633, 688, 743];
 const FLOOR_Y = ROAD_LANES[1];
+const GROUND_MOVEMENT_MODE = 'free-road';
+const ROAD_DEPTH_SPEED = 155; // logical px/s
+const JUMP_SPEED = 265; // initial logical px/s upward
+const FLIGHT_HOLD_MS = 145;
+const ROAD_SHEET = 'road-obstacle-sheet';
+// Family, sheet bounds (within its cell), road clearance in logical pixels.
+const ROAD_ART = {
+    cone: [0, 22, 19, 91, 107, 32], barrier: [1, 5, 26, 116, 101, 43],
+    barrel: [2, 20, 13, 92, 113, 43], tires: [3, 8, 28, 111, 99, 40],
+    crate: [4, 8, 13, 111, 106, 45], pothole: [5, 5, 59, 121, 65, 14],
+    tread: [6, 5, 60, 116, 58, 19], fallen: [7, 0, 54, 128, 69, 23]
+};
+const ROAD_FALLBACK = { barrel: 'tires', tread: 'rock', fallen: 'pile' };
 const LANE_KEYS = { KeyQ: -1, KeyE: 1 };
 const LANE_SCALE = [.9, 1, 1.1];
 const START_X = 150;
@@ -72,7 +85,8 @@ const ROAD_PATTERNS = [
     { level: 2, items: [['cone', 0, 0], ['cone', 1, 110], ['cone', 0, 220]] },
     { level: 2, items: [['pothole', 0, 0], ['pothole', 1, 94], ['pothole', 0, 178]] },
     { level: 2, items: [['crate', 0, 0], ['puddle', 0, 98]] },
-    { level: 2, items: [['rock', 0, 0]] },
+    { level: 2, items: [['tread', 0, 0], ['fallen', 1, 94]] },
+    { level: 2, items: [['barrel', 0, 0]] },
     { level: 3, items: [['barrier', 0, 0], ['tires', 1, 157]] },
     { level: 3, items: [['pile', 0, 0], ['pothole', 0, 115]] },
     { level: 3, items: [['overhead', null, 0]] },
@@ -323,6 +337,20 @@ function makeTextures(scene) {
             rect(0x393b47, x + 72, 110, 27, 2);
         }
     });
+    for (const [key, crowns, color] of [
+        ['tree-broadleaf', [[32, 31, 25], [49, 30, 23], [40, 18, 23]], 0x627553],
+        ['tree-narrow', [[39, 19, 11], [40, 39, 16], [40, 58, 20]], 0x52684e],
+        ['tree-crooked', [[19, 36, 16], [30, 20, 19], [52, 33, 16], [51, 16, 15]], 0x78835a]
+    ]) {
+        texture(key, 80, 100, () => {
+            rect(0x453b36, 36, 39, 9, 59);
+            for (const [x, y, r] of crowns) {
+                graphics.fillStyle(0x394842).fillCircle(x, y, r);
+                graphics.fillStyle(color).fillCircle(x - 2, y - 3, r - 4);
+                graphics.fillStyle(0x9d9c69, .48).fillCircle(x - 5, y - 7, Math.max(2, r / 3));
+            }
+        });
+    }
     texture('track', WIDTH, HEIGHT - GROUND + 58, () => {
         rect(0x373841, 0, 0, WIDTH, HEIGHT - GROUND + 58);
         rect(0x827b7c, 0, 0, WIDTH, 5);
@@ -340,7 +368,8 @@ function makeTextures(scene) {
     graphics.destroy();
 }
 
-const PARALLAX = { clouds: .03, mountains: .10, treeLine: .22, trees: .45, fencing: .75, lot: .36, road: 1, foreground: 1 };
+// Each value is a fraction of the road speed in logical pixels per second.
+const PARALLAX = { mountains: .025, clouds: .032, treeLine: .065, distantTrees: .095, trees: .17, lot: .23, road: 1, foreground: 1 };
 const wrap = (x, period) => ((x % period) + period) % period;
 function seeded(seed) {
     let state = seed >>> 0;
@@ -350,12 +379,15 @@ function seeded(seed) {
     };
 }
 
-// Trees and fences share a distant band. RVs sit in a separate foreground band.
+// Trees occupy two depth bands. The original towables remain above the lot.
 const SCENERY = [
-    ['prop_tree_pine', 68, 521, 72, 91, 0xb5aaa1, 'trees', 0],
-    ['prop_fence_segment', 220, 521, 158, 54, 0xb5aaa1, 'fencing', 0],
-    ['prop_tree_pine', 377, 521, 70, 88, 0xb5aaa1, 'trees', 0],
-    ['prop_fence_segment', 519, 521, 144, 54, 0xb5aaa1, 'fencing', 0],
+    ['tree-broadleaf', 55, 512, 82, 77, 0xe3c9c0, 'distantTrees', -.8],
+    ['tree-narrow', 155, 502, 42, 88, 0xdac8cb, 'distantTrees', -.8],
+    ['tree-crooked', 298, 515, 78, 80, 0xf0dacd, 'distantTrees', -.8],
+    ['tree-broadleaf', 480, 506, 55, 59, 0xcec1cb, 'distantTrees', -.8],
+    ['prop_tree_pine', 204, 530, 76, 106, 0xdac7ae, 'trees', 0],
+    ['tree-crooked', 405, 528, 91, 85, 0xe2c9ac, 'trees', 0],
+    ['tree-narrow', 542, 530, 44, 96, 0xe8d0c1, 'trees', 0],
     ['lite_tt_v2', 152, 611, 181, 87, 0xd4c8be, 'lot', 2.1],
     ['generic_bunkhouse_fifth_wheel_teal', 447, 611, 200, 87, 0xd4c8be, 'lot', 2.1]
 ];
@@ -381,6 +413,7 @@ function boot() {
 
     class DashScene extends Phaser.Scene {
         preload() {
+            if (window.RV_ROAD_SHEET) this.load.image(ROAD_SHEET, window.RV_ROAD_SHEET);
             for (const art of window.RV_OBSTACLES || []) this.load.image('obstacle-' + art.key, art.data);
             const assets = window.RV_DASH_EMBEDDED || {};
             this.loadFailures = new Set();
@@ -406,15 +439,24 @@ function boot() {
             this.score = 0;
             this.elapsed = 0;
             this.store = null;
-            this.flightKeys = new Set();
+            this.roadKeys = new Set();
             this.moveKeys = new Set();
             this.hp = START_HP;
-            this.spaceHeld = false;
+            this.shootHeld = false;
             this.pointerId = null;
             this.shots = [];
             this.finishedRuns = 0;
             this.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
             makeTextures(this);
+            if (this.textures.exists(ROAD_SHEET)) {
+                const sheet = this.textures.get(ROAD_SHEET);
+                const image = sheet.getSourceImage();
+                if (image.width === 512 && image.height === 256) {
+                    for (const [name, [index, x, y, width, height]] of Object.entries(ROAD_ART)) {
+                        sheet.add(name, 0, index % 4 * 128 + x, Math.floor(index / 4) * 128 + y, width, height);
+                    }
+                }
+            }
             if (this.loadFailures.size) return;
             this.sky = this.add.image(0, 0, 'sky-dawn').setOrigin(0).setDepth(-6);
             this.skyOverlay = this.add.image(0, 0, 'sky-dawn').setOrigin(0).setDepth(-5).setAlpha(0);
@@ -509,16 +551,12 @@ function boot() {
                 if (Object.hasOwn(LANE_KEYS, code)) {
                     if (this.state !== STATES.PLAYING || this.crashUntil || event.target !== byId('playfield')) return;
                     event.preventDefault();
-                    if (!event.repeat && this.player.y >= ROAD_LANES[this.roadLane]) {
+                    if (!event.repeat && this.player.y >= this.roadDepth) {
                         this.roadLane = Phaser.Math.Clamp(this.roadLane + LANE_KEYS[code], 0, ROAD_LANES.length - 1);
-                        this.player.y = ROAD_LANES[this.roadLane];
+                        this.roadDepth = ROAD_LANES[this.roadLane];
+                        this.depthSpeed = 0;
+                        this.player.y = this.roadDepth;
                     }
-                    return;
-                }
-                if (code === 'ArrowDown') {
-                    if (this.state !== STATES.PLAYING || this.crashUntil || event.target !== byId('playfield')) return;
-                    event.preventDefault();
-                    if (!event.repeat) this.downHeld = true;
                     return;
                 }
                 if (code === 'KeyP' && event.shiftKey) {
@@ -534,28 +572,37 @@ function boot() {
                     }
                     return;
                 }
-                const fly = code === 'ArrowUp' || code === 'KeyW';
+                const road = ['ArrowUp', 'KeyW', 'ArrowDown', 'KeyS'].includes(code);
                 const move = ['ArrowLeft', 'ArrowRight', 'KeyA', 'KeyD'].includes(code);
-                if (move && this.state !== STATES.PLAYING) return;
-                if ((!fly && !move && code !== 'Space') || event.target.closest('button, a') || this.state === STATES.PAUSED) return;
+                if ((road || move) && (this.state !== STATES.PLAYING || event.target !== byId('playfield'))) return;
+                if ((!road && !move && code !== 'Space' && code !== 'KeyF')
+                    || event.target.closest('button, a') || this.state === STATES.PAUSED) return;
                 event.preventDefault();
                 if (event.repeat || this.crashUntil && this.state === STATES.PLAYING) return;
                 if (this.state !== STATES.PLAYING) this.start();
                 if (move) this.moveKeys.add(code);
-                else if (fly) this.flightKeys.add(code);
-                else {
-                    this.spaceHeld = true;
+                else if (road) {
+                    if (this.player.y >= this.roadDepth) this.roadKeys.add(code);
+                    else if (code === 'ArrowDown' || code === 'KeyS') this.downHeld = true;
+                } else if (code === 'Space') {
+                    this.jumpHeld = true;
+                    this.jumpStarted = this.elapsed;
+                    this.jump();
+                } else {
+                    this.shootHeld = true;
                     this.fire();
                 }
             });
             on(document, 'keyup', (event) => {
-                if (event.code === 'ArrowDown') this.downHeld = false;
-                this.flightKeys.delete(event.code);
+                this.roadKeys.delete(event.code);
+                if (!this.roadKeys.has('ArrowDown') && !this.roadKeys.has('KeyS')
+                    && (event.code === 'ArrowDown' || event.code === 'KeyS')) this.downHeld = false;
                 this.moveKeys.delete(event.code);
-                if (event.code === 'Space') this.spaceHeld = false;
+                if (event.code === 'Space') this.jumpHeld = false;
+                if (event.code === 'KeyF') this.shootHeld = false;
             });
             const field = byId('playfield');
-            on(field, 'blur', () => { this.downHeld = false; });
+            on(field, 'blur', () => { this.downHeld = false; this.roadKeys.clear(); });
             on(field, 'pointerdown', (event) => {
                 if (event.button !== 0 || this.crashUntil || this.state === STATES.PAUSED || this.loadFailures.size) return;
                 if (this.state === STATES.AWAITING_START) this.start();
@@ -569,6 +616,8 @@ function boot() {
                     this.pointerId = event.pointerId;
                     if (event.pointerType === 'touch') {
                         this.touchStartX = event.clientX;
+                        this.touchStartY = event.clientY;
+                        this.touchLiftAt = this.player.y >= this.roadDepth ? this.elapsed + 145 : this.elapsed;
                         this.touchPlayerX = this.player.x;
                         this.touchTargetX = this.player.x;
                     }
@@ -576,6 +625,10 @@ function boot() {
             });
             on(field, 'pointermove', (event) => {
                 if (event.pointerId !== this.pointerId || this.touchTargetX == null) return;
+                if (this.player.y >= this.roadDepth) {
+                    const dy = event.clientY - this.touchStartY;
+                    this.touchDepthDirection = Math.abs(dy) > 5 ? Math.sign(dy) : 0;
+                }
                 this.touchTargetX = Phaser.Math.Clamp(this.touchPlayerX + (event.clientX - this.touchStartX)
                     * WIDTH / field.clientWidth, EDGE_MARGIN, WIDTH - EDGE_MARGIN);
             });
@@ -584,6 +637,7 @@ function boot() {
                     if (this.pointerId === pointer.pointerId) {
                         this.pointerId = null;
                         this.touchTargetX = null;
+                        this.touchDepthDirection = 0;
                     }
                 });
             }
@@ -627,10 +681,12 @@ function boot() {
 
         clearInput() {
             this.downHeld = false;
-            this.flightKeys.clear();
+            this.roadKeys.clear();
+            this.jumpHeld = false;
+            this.touchDepthDirection = 0;
             this.moveKeys.clear();
             this.touchTargetX = null;
-            this.spaceHeld = false;
+            this.shootHeld = false;
             const field = byId('playfield');
             if (this.pointerId !== null && field.hasPointerCapture(this.pointerId)) field.releasePointerCapture(this.pointerId);
             this.pointerId = null;
@@ -675,11 +731,14 @@ function boot() {
             this.puddleUntil = 0;
             this.patternIndex = 0;
             this.coffeeUntil = 0;
+            this.coffeeLiftUntil = 0;
             this.crashUntil = 0;
             this.flashUntil = 0;
             this.bannerUntil = 0;
             this.verticalSpeed = 0;
             this.roadLane = 1;
+            this.roadDepth = FLOOR_Y;
+            this.depthSpeed = 0;
             this.nextExhaust = 0;
             this.idleLine = 0;
             this.player.anims.stop();
@@ -776,6 +835,7 @@ function boot() {
                 return;
             }
             this.moveHorizontally(dt);
+            this.moveRoadDepth(dt);
             this.fly(dt);
             const distance = scrollSpeed(this.scroll) * dt;
             this.scroll += distance;
@@ -807,7 +867,7 @@ function boot() {
                 }
             }
             this.updateHealthPickup(distance);
-            if (this.spaceHeld) this.fire();
+            if (this.shootHeld) this.fire();
             for (const segment of this.segments) {
                 segment.age += step;
                 segment.view.x -= distance * (segment.pattern === BOSS ? 0.78 : 1);
@@ -839,9 +899,39 @@ function boot() {
             });
         }
 
+        jump() {
+            if (this.player.y < this.roadDepth) return;
+            this.verticalSpeed = -JUMP_SPEED;
+            this.acceleration = GRAVITY;
+            this.depthSpeed = 0;
+        }
+
+        moveRoadDepth(dt) {
+            if (GROUND_MOVEMENT_MODE !== 'free-road' || this.player.y < this.roadDepth || this.verticalSpeed < 0) return;
+            const far = this.roadKeys.has('ArrowUp') || this.roadKeys.has('KeyW');
+            const near = this.roadKeys.has('ArrowDown') || this.roadKeys.has('KeyS');
+            const direction = this.touchDepthDirection || Number(near) - Number(far);
+            const response = direction ? STEER_RESPONSE : STEER_BRAKE;
+            this.depthSpeed += (direction * ROAD_DEPTH_SPEED - this.depthSpeed) * (1 - Math.exp(-response * dt));
+            if (!direction && Math.abs(this.depthSpeed) < STOP_SPEED) this.depthSpeed = 0;
+            const depth = this.roadDepth + this.depthSpeed * dt;
+            this.roadDepth = Phaser.Math.Clamp(depth, ROAD_LANES[0], ROAD_LANES.at(-1));
+            if (depth !== this.roadDepth) this.depthSpeed = 0;
+            this.player.y = this.roadDepth;
+            this.roadLane = Math.round((this.roadDepth - ROAD_LANES[0]) / (ROAD_LANES[1] - ROAD_LANES[0]));
+        }
+
+        roadPerspective() {
+            return .94 + .12 * (this.roadDepth - ROAD_LANES[0]) / (ROAD_LANES.at(-1) - ROAD_LANES[0]);
+        }
+
         fly(dt) {
-            const thrusting = this.flightKeys.size > 0 || this.pointerId !== null;
-            const assist = this.downHeld && !thrusting;
+            const airborne = this.player.y < this.roadDepth || this.verticalSpeed < 0;
+            const thrusting = !this.touchDepthDirection && this.pointerId !== null
+                && (this.touchTargetX == null || this.elapsed >= this.touchLiftAt)
+                || this.jumpHeld && airborne && this.elapsed - this.jumpStarted >= FLIGHT_HOLD_MS
+                || this.elapsed < this.coffeeLiftUntil;
+            const assist = airborne && this.downHeld && !thrusting;
             const target = GRAVITY - (thrusting ? THRUST : 0) + (assist ? DESCENT_BONUS : 0);
             if (!assist) this.acceleration = Math.min(this.acceleration, GRAVITY);
             this.acceleration += (target - this.acceleration) * (1 - Math.exp(-22 * dt));
@@ -849,7 +939,7 @@ function boot() {
                 -RISE_CAP, assist ? ASSISTED_FALL_CAP : FALL_CAP);
             const previousY = this.player.y;
             const y = previousY + this.verticalSpeed * dt;
-            const floor = ROAD_LANES[this.roadLane];
+            const floor = this.roadDepth;
             this.player.y = Phaser.Math.Clamp(y, CEILING_Y, floor);
             if (y !== this.player.y) {
                 if (y > floor && previousY < floor) this.landedAt = this.elapsed;
@@ -866,17 +956,17 @@ function boot() {
             this.drawTaggy(thrusting);
             const scale = ['taggy-fly', 'taggy-shoot', 'taggy-hit'].includes(this.player.texture.key) ? 1 : 0.5;
             const landing = scale === 1 ? 0 : squash;
-            const perspective = LANE_SCALE[this.roadLane];
+            const perspective = this.roadPerspective();
             this.player.setScale(scale * (1 + landing) * perspective, scale * (1 - landing) * perspective);
         }
 
         drawRoadPosition() {
-            const floor = ROAD_LANES[this.roadLane];
+            const floor = this.roadDepth;
             const altitude = floor - this.player.y;
             this.playerShadow.setPosition(this.player.x, floor + 29)
                 .setAlpha(Math.max(.14, .48 - altitude / 650))
-                .setScale(LANE_SCALE[this.roadLane] * Math.max(.55, 1 - altitude / 740));
-            this.player.setDepth(altitude > 40 ? 5 : 3 + (this.roadLane + .5) / 3);
+                .setScale(this.roadPerspective() * Math.max(.55, 1 - altitude / 740));
+            this.player.setDepth(altitude > 40 ? 5 : 3 + (floor - ROAD_LANES[0]) / 160 + .05);
         }
 
         resetSky() {
@@ -911,15 +1001,17 @@ function boot() {
             this.treeLine.tilePositionX = offset('treeLine');
             this.lot.tilePositionX = offset('lot');
             this.road.tilePositionX = offset('road');
-            if (this.layerLevel !== this.level) {
-                this.layerLevel = this.level;
-                for (const layer of ['trees', 'fencing']) {
-                    const random = seeded(this.level * 17 + (layer === 'trees' ? 1 : 2));
-                    const variants = Array.from({ length: 2 }, () => [random() * 62 - 31, .86 + random() * .23]);
-                    let index = 0;
-                    for (const item of this.scenery.filter(({ speed }) => speed === layer)) {
-                        [item.shift, item.factor] = variants[Math.floor(index++ / 3)];
-                        item.image.setScale(item.scale * item.factor);
+            if (this.layerLevel == null || this.layerLevel === 0) {
+                this.layerLevel = 1;
+                const random = seeded(271);
+                for (let i = 0; i < this.scenery.length; i += 3) {
+                    const group = this.scenery.slice(i, i + 3);
+                    if (!['trees', 'distantTrees'].includes(group[0].speed)) continue;
+                    const shift = random() * 34 - 17;
+                    const scale = .88 + random() * .22;
+                    for (const item of group) {
+                        item.shift = shift;
+                        item.image.setScale(item.scale * scale);
                     }
                 }
             }
@@ -936,8 +1028,7 @@ function boot() {
         advanceScenery(distance, dt) {
             if (this.reducedMotion.matches) return;
             for (const [name, factor] of Object.entries(PARALLAX)) {
-                const motion = name === 'lot' ? 0 : this.horizontalSpeed * factor * factor * .46;
-                const speed = Math.max(2, distance / dt * factor + motion + (name === 'clouds' ? 4 : 0));
+                const speed = distance / dt * factor;
                 this.layerSpeeds[name] = speed;
                 this.layerOffsets[name] = (this.layerOffsets[name] || 0) + speed * dt;
             }
@@ -973,7 +1064,7 @@ function boot() {
 
         drawTaggy(thrusting) {
             if (this.elapsed < this.hitPoseUntil) return;
-            const airborne = this.player.y < ROAD_LANES[this.roadLane ?? 1];
+            const airborne = this.player.y < (this.roadDepth ?? FLOOR_Y);
             let key = airborne ? 'taggy-fly' : 'taggy-walk-right';
             if (this.elapsed < this.shotPoseUntil) key = 'taggy-shoot';
             if ((thrusting || airborne || key === 'taggy-shoot' || this.state === STATES.PLAYING)
@@ -1064,16 +1155,21 @@ function boot() {
                 return SPAWN_TIMING.enemy;
             }
             items.forEach(([family, offset, spacing], i) => {
-                const list = arts.filter((art) => family === 'overhead' ? art.type === 'overhead' : art.family === family);
+                const list = arts.filter((art) => family === 'overhead' ? art.type === 'overhead' : art.family === (ROAD_FALLBACK[family] || family));
                 if (!list.length) return;
                 let pick = this.patternRandom() * list.reduce((total, art) => total + art.weight, 0);
                 const art = list.find((entry) => (pick -= entry.weight) < 0) || list.at(-1);
                 const lane = offset == null ? null : (openLane + 1 + offset) % 3;
+                const depth = lane == null ? null : ROAD_LANES[lane] + this.patternRandom() * 12 - 6;
                 const scale = lane == null ? 1 : LANE_SCALE[lane];
-                const height = lane == null ? 202 : art.height * scale;
+                const native = ROAD_ART[family];
+                const sheetFrame = native && this.textures.exists(ROAD_SHEET)
+                    && this.textures.get(ROAD_SHEET).has(family) ? family : null;
+                const width = (sheetFrame ? native[3] * .66 : art.width) * scale;
+                const height = lane == null ? 202 : sheetFrame ? width * native[4] / native[3] : art.height * scale;
                 this.spawnPattern({ key: 'obstacle-' + art.key, art, roadLane: lane,
-                    lane: lane == null ? 'high' : 'low', width: art.width * scale,
-                    height, y: lane == null ? 0 : ROAD_LANES[lane] + 27 - height / 2,
+                    lane: lane == null ? 'high' : 'low', width, depth, sheetFrame,
+                    clearance: native?.[5] ?? 34, height, y: lane == null ? 0 : depth + 27 - height / 2,
                     spacing, coins: 'arc' }, index, i === 0);
             });
             const reaction = Math.max(SPAWN_TIMING.minimumReaction, SPAWN_TIMING.reaction - (this.level - 1) * .05);
@@ -1087,12 +1183,13 @@ function boot() {
                 && !pattern.hp ? entry.type === 'overhead' : entry.family === family);
             const art = pattern.art || (choices.length ? choices[index % choices.length] : null);
             const texture = art && this.textures.exists('obstacle-' + art.key) ? 'obstacle-' + art.key : pattern.key;
-            const hazard = this.add.sprite(0, pattern.y, texture, this.firstFrame(texture));
+            const hazard = this.add.sprite(0, pattern.y, pattern.sheetFrame ? ROAD_SHEET : texture,
+                pattern.sheetFrame || this.firstFrame(texture));
             if (!this.anims.exists(pattern.key)) hazard.setDisplaySize(pattern.width, pattern.height);
             if (this.anims.exists(pattern.key) && !this.reducedMotion.matches) hazard.play(pattern.key);
             const hanging = art?.type === 'overhead';
             if (hanging) hazard.setOrigin(.5, 0).setDisplaySize(pattern.width, pattern.art ? pattern.height : pattern.y + pattern.height / 2);
-            else if (pattern.art) view.setDepth(3 + pattern.roadLane / 3);
+            else if (pattern.art) view.setDepth(3 + ((pattern.depth ?? ROAD_LANES[pattern.roadLane]) - ROAD_LANES[0]) / 160);
             view.add(hazard);
             const routeY = pattern.lane === 'high' ? 530 : 455;
             const coins = Array.from({ length: includeCoins ? 5 : 0 }, (_, i) => {
@@ -1117,15 +1214,17 @@ function boot() {
             const art = pattern.art;
             const insetY = art && !hanging ? (art.hit[1] + art.hit[3] / 2 - .5) * pattern.height : 0;
             const dy = Math.abs((hanging ? Math.cos(hazard.rotation) * tip : hazard.y + insetY) - y);
-            const grounded = y >= ROAD_LANES[this.roadLane] - 5;
-            const laneMatches = !art || hanging || !grounded || pattern.roadLane === this.roadLane;
+            const altitude = this.roadDepth - y;
+            const grounded = altitude <= 5;
+            const road = art && !hanging && pattern.depth != null;
+            const laneMatches = !road || Math.abs(pattern.depth - this.roadDepth) <= 22;
             // Use the opaque cap or base, with a small forgiving inset on each side.
             const halfWidth = hanging ? hazard.displayWidth * hanging.hit[2] / 2 : art ? pattern.width * art.hit[2] / 2 : pattern.width * (pattern.key === 'tire' ? 0.36 : 0.42);
             const halfHeight = hanging ? hazard.displayHeight * hanging.hit[3] / 2 : art ? pattern.height * art.hit[3] / 2 : pattern.height * (pattern.key === 'tire' ? 0.36 : 0.44);
             if (pattern.key === 'tire' && !this.reducedMotion.matches) hazard.rotation = this.scroll / 48;
             const alive = segment.hp !== 0;
-            const impact = alive && laneMatches && dx < halfWidth + PLAYER_HALF_WIDTH
-                && dy < halfHeight + PLAYER_HALF_HEIGHT;
+            const verticalImpact = road ? altitude < pattern.clearance : dy < halfHeight + PLAYER_HALF_HEIGHT;
+            const impact = alive && laneMatches && dx < halfWidth + PLAYER_HALF_WIDTH && verticalImpact;
             if (impact && art?.type === 'slow-down') {
                 if (grounded && !segment.slowed) {
                     segment.slowed = true;
@@ -1169,6 +1268,8 @@ function boot() {
             const coffee = coin.texture.key === 'coffee';
             if (coffee) {
                 this.coffeeUntil = this.elapsed + COFFEE_MS;
+                this.coffeeLiftUntil = this.elapsed + 360;
+                this.jump();
                 this.showFeedback('COFFEE x2', x, coin.y);
                 this.speak('Coffee break? Maybe later.');
             } else {
@@ -1261,7 +1362,7 @@ function boot() {
             this.crashAt = this.elapsed;
             this.crashUntil = this.elapsed + CRASH_MS;
             this.clearInput();
-            if (!this.reducedMotion.matches) this.cameras.main.shake(145, 0.003);
+            if (!this.reducedMotion.matches) this.cameras.main.shake(110, 0.0018);
             this.speak("Ouch... that's a tag!");
         }
 

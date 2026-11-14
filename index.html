@@ -4,15 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RV Dash</title>
-  <link rel="stylesheet" href="arcade.css?v=15">
-  <link rel="stylesheet" href="cabinet.css?v=15">
-  <script defer src="vendor/phaser.min.js?v=15"></script>
-  <script defer src="game_assets/embedded-assets.js?v=15"></script>
-  <script defer src="leaderboard-config.js?v=15"></script>
-  <script defer src="leaderboard.js?v=15"></script>
-  <script defer src="game_assets/obstacles.js?v=15"></script>
-  <script defer src="game.js?v=15"></script>
-  <script defer src="cabinet.js?v=15"></script>
+  <link rel="stylesheet" href="arcade.css?v=16">
+  <link rel="stylesheet" href="cabinet.css?v=16">
+  <script defer src="vendor/phaser.min.js?v=16"></script>
+  <script defer src="game_assets/embedded-assets.js?v=16"></script>
+  <script defer src="leaderboard-config.js?v=16"></script>
+  <script defer src="leaderboard.js?v=16"></script>
+  <script defer src="game_assets/obstacles.js?v=16"></script>
+  <script defer src="game_assets/road-obstacle-sheet.js?v=16"></script>
+  <script defer src="game.js?v=16"></script>
+  <script defer src="cabinet.js?v=16"></script>
 </head>
 <body>
   <main>
@@ -53,18 +54,18 @@
           <label id="shot-status" hidden>Shot <progress id="shot-meter" aria-label="Shot readiness" max="1" value="1"></progress></label>
         </div>
         <section id="flight-hint" class="controls-strip" aria-label="How to play">
-          <span><b>Fly</b> Up / W / mouse hold</span>
+          <span><b>Fly</b> Hold Space / mouse</span>
           <span><b>Move</b> Left / Right or A / D</span>
-          <span><b>Shoot</b> Space</span>
-          <span><b>Road lanes</b> Q / E</span>
-          <span><b>Descend</b> Down</span>
+          <span><b>Shoot</b> F</span>
+          <span><b>Road depth</b> Up / W, Down / S (Q / E fallback)</span>
+          <span><b>Jump</b> Space</span>
           <span><b>Pause</b> P</span>
-          <span class="touch-hint"><b>Touch</b> Hold and drag left to fly and steer. Tap right to shoot.</span>
+          <span class="touch-hint"><b>Touch</b> Hold left to fly. Drag vertically from the road to walk. Tap right to shoot.</span>
         </section>
         <p id="effects" hidden></p>
         <p id="status" role="status">Loading game…</p>
         <div id="game-area">
-          <div id="playfield" tabindex="-1" role="group" aria-label="Taggy flight course. Hold Up, W, mouse, or the left touch half to rise. Steer with Left/Right, A/D, or by dragging the left touch. Shoot with Space or tap the right touch half. Pause with P or Escape.">
+          <div id="playfield" tabindex="-1" role="group" aria-label="Taggy flight course. Tap Space to jump. Hold Space, mouse, or the left touch half to fly. Use Up/W and Down/S to walk across the road. Steer with Left/Right, A/D, or by dragging the left touch. Shoot with F or tap the right touch half. Pause with P or Escape.">
             <p id="speech" hidden></p>
           </div>
         </div>
@@ -118,13 +119,13 @@
     <dialog id="controls-dialog" aria-labelledby="controls-title">
       <h2 id="controls-title">Flight controls</h2>
       <dl>
-        <dt>Fly</dt><dd>Up, W or hold the mouse button.</dd>
+        <dt>Fly</dt><dd>Tap Space to jump. Hold Space in the air or the mouse button to fly.</dd>
         <dt>Descend</dt><dd>Hold Down for a small boost while falling. Lift takes priority.</dd>
-        <dt>Road lanes</dt><dd>Q and E step between lanes while grounded.</dd>
+        <dt>Road lanes</dt><dd>Up/W and Down/S move along road depth while grounded. Q/E step between lanes.</dd>
         <dt>Steer</dt><dd>Left / Right or A / D.</dd>
-        <dt>Shoot</dt><dd>Space.</dd>
+        <dt>Shoot</dt><dd>F.</dd>
         <dt>Pause</dt><dd>P or Escape.</dd>
-        <dt>Touch</dt><dd>Hold and drag on the left to fly and steer. Tap the right to shoot.</dd>
+        <dt>Touch</dt><dd>On the left, hold to fly, drag sideways to steer, or drag vertically from the road to walk. Tap right to shoot.</dd>
       </dl>
       <form method="dialog"><button autofocus>Close controls</button></form>
     </dialog>
