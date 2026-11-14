@@ -96,6 +96,48 @@ function track(event, details = {}) {
     }
 }
 
+const SKY_PALETTES = [
+    ['dawn', '#403564', '#a06585', '#f1ad85', '#ffe1b3'],
+    ['midday', '#255e93', '#568fb3', '#aed0d3', '#fff0bf'],
+    ['sunset', '#473461', '#a25570', '#ee946e', '#ffd19a'],
+    ['dusk', '#242b51', '#474974', '#a76d82', '#e5c9cf'],
+    ['night', '#111a35', '#253454', '#495574', '#e5eaf8']
+];
+
+function cacheSkies(scene) {
+    for (const [name, top, middle, horizon, light] of SKY_PALETTES) {
+        const key = 'sky-' + name;
+        if (scene.textures.exists(key)) continue;
+        const texture = scene.textures.createCanvas(key, WIDTH, GROUND);
+        const ctx = texture.context;
+        const gradient = ctx.createLinearGradient(0, 0, 0, 530);
+        gradient.addColorStop(0, top);
+        gradient.addColorStop(0.59, middle);
+        gradient.addColorStop(1, horizon);
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, WIDTH, GROUND);
+        if (name === 'night' || name === 'dusk') {
+            for (let i = 0; i < (name === 'night' ? 65 : 19); i++) {
+                const x = (i * 137 + 27) % WIDTH;
+                const y = (i * i * 71 + 19) % 330;
+                const size = i % 7 === 0 ? 3 : 1;
+                ctx.fillStyle = i % 3 === 0 ? '#d8e7ff' : '#9aabc9';
+                ctx.fillRect(x, y, size, size);
+            }
+        }
+        const glow = ctx.createRadialGradient(470, 132, 12, 470, 132, 110);
+        glow.addColorStop(0, light + '77');
+        glow.addColorStop(1, light + '00');
+        ctx.fillStyle = glow;
+        ctx.fillRect(360, 22, 220, 220);
+        ctx.fillStyle = light;
+        ctx.beginPath();
+        ctx.arc(470, 132, name === 'night' ? 32 : 43, 0, Math.PI * 2);
+        ctx.fill();
+        texture.refresh();
+    }
+}
+
 function makeTextures(scene) {
     const graphics = scene.make.graphics({ add: false });
     function rect(color, x, y, width, height) {
@@ -214,24 +256,27 @@ function makeTextures(scene) {
     texture('pop-fx', 64, 64, () => {
         for (const [x, y] of [[32, 12], [15, 28], [49, 33], [28, 49]]) circle(0xffc5a0, x, y, 9);
     });
-    texture('sky', WIDTH, HEIGHT, () => {
-        for (let y = 0; y < HEIGHT; y += 4) {
-            const t = y / HEIGHT;
-            const rgb = [44 + 156 * t, 42 + 118 * t, 46 + 98 * t].map(Math.round);
-            rect((rgb[0] << 16) | (rgb[1] << 8) | rgb[2], 0, y, WIDTH, 4);
+    cacheSkies(scene);
+    texture('clouds', WIDTH, 220, () => {
+        for (const [x, y] of [[72, 124], [294, 172], [501, 61]]) {
+            graphics.fillStyle(0xffe8dc, 0.26).fillRoundedRect(x - 43, y, 114, 16, 8);
+            graphics.fillRoundedRect(x - 19, y - 11, 62, 19, 8);
         }
-        graphics.fillStyle(0xe9c7ab).fillCircle(463, 132, 49);
-        for (const [x, y] of [[0, 420], [76, 388], [156, 432], [292, 404], [440, 420], [572, 415]]) {
-            graphics.fillStyle(0x716866).fillTriangle(x - 110, 503, x, y, x + 110, 503);
-        }
-        rect(0x514b49, 0, 503, WIDTH, GROUND - 503);
-        rect(0x645b56, 0, 522, WIDTH, 5);
-        rect(0x5a5350, 0, 527, WIDTH, GROUND - 527);
     });
-    texture('clouds', WIDTH, HEIGHT, () => {
-        for (const [x, y] of [[60, 150], [290, 228], [505, 74]]) {
-            graphics.fillStyle(0xfaf1d6, 0.62).fillRoundedRect(x - 36, y, 102, 23, 11);
-            graphics.fillRoundedRect(x - 8, y - 12, 54, 26, 13);
+    texture('hills', WIDTH, 180, () => {
+        for (const [x, rise, span] of [[0, 116, 130], [151, 80, 98], [261, 136, 116], [408, 93, 110], [522, 122, 99], [600, 116, 130]]) {
+            graphics.fillStyle(0x343950, 0.89).fillTriangle(x - span, 174, x, 170 - rise, x + span, 174);
+            graphics.fillStyle(0x646079, 0.7).fillTriangle(x - span * 0.59, 174, x, 170 - rise, x + 21, 174);
+        }
+        rect(0x33374a, 0, 168, WIDTH, 12);
+    });
+    texture('lot', WIDTH, 150, () => {
+        rect(0x444550, 0, 0, WIDTH, 150);
+        rect(0x66616a, 0, 14, WIDTH, 4);
+        rect(0x565460, 0, 65, WIDTH, 2);
+        for (let x = 0; x < WIDTH; x += 150) {
+            graphics.fillStyle(0xb4a9a5, 0.23).fillTriangle(x + 18, 70, x + 44, 136, x + 49, 136);
+            rect(0x393b47, x + 72, 110, 27, 2);
         }
     });
     texture('track', WIDTH, HEIGHT - GROUND + 24, () => {
@@ -310,8 +355,18 @@ function boot() {
             this.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
             makeTextures(this);
             if (this.loadFailures.size) return;
-            this.add.image(0, 0, 'sky').setOrigin(0);
-            this.clouds = this.add.tileSprite(0, 0, WIDTH, HEIGHT, 'clouds').setOrigin(0);
+            this.sky = this.add.image(0, 0, 'sky-dawn').setOrigin(0).setDepth(-6);
+            this.skyOverlay = this.add.image(0, 0, 'sky-dawn').setOrigin(0).setDepth(-5).setAlpha(0);
+            this.skyStage = 'dawn';
+            this.skyTarget = 'dawn';
+            this.skyBlendStart = 0;
+            this.clouds = this.add.tileSprite(0, 0, WIDTH, 220, 'clouds').setOrigin(0).setDepth(-4);
+            this.hills = this.add.tileSprite(0, 327, WIDTH, 180, 'hills').setOrigin(0).setDepth(-3);
+            this.lot = this.add.tileSprite(0, 503, WIDTH, 150, 'lot').setOrigin(0).setDepth(-2);
+            this.streaks = this.add.graphics().setDepth(2.5);
+            this.trail = this.add.graphics().setDepth(4.5);
+            this.trailPoints = [];
+            this.nextTrail = 0;
             this.scenery = makeScenery(this);
             this.road = this.add.tileSprite(0, GROUND - 24, WIDTH, HEIGHT - GROUND + 24, 'track').setOrigin(0).setDepth(2);
             for (const [key, [, , , count, fps]] of Object.entries(SPRITES)) {
@@ -328,8 +383,8 @@ function boot() {
             this.segments = [];
             this.effects = [];
             this.banner = this.add.text(WIDTH / 2, 100, '', {
-                fontFamily: 'monospace', fontStyle: 'bold', fontSize: '52px',
-                color: '#ffffff', stroke: '#8f1616', strokeThickness: 10
+                fontFamily: 'system-ui, sans-serif', fontStyle: 'bold', fontSize: '35px',
+                color: '#ffffff', backgroundColor: '#171922', padding: { x: 24, y: 9 }
             }).setOrigin(0.5).setDepth(8).setVisible(false);
             this.makeLegend();
             this.bindControls();
@@ -503,7 +558,11 @@ function boot() {
             this.player.clearTint().setScale(0.5).setAngle(0).setPosition(START_X, FLOOR_Y);
             this.drawTaggy(false);
             this.banner.setVisible(false);
+            this.resetSky();
+            this.trailPoints.length = 0;
+            this.nextTrail = 0;
             this.drawScenery();
+            this.drawSpeedFX();
             this.selectStore(null);
             this.setRoundState(STATES.PLAYING);
             this.speak("Price Right. Let's roll.");
@@ -542,8 +601,10 @@ function boot() {
         }
 
         updateStats() {
-            byId('score').textContent = this.score;
-            byId('level').textContent = this.level;
+            const score = byId('score');
+            const level = byId('level');
+            if (score.textContent !== String(this.score)) score.textContent = this.score;
+            if (level.textContent !== String(this.level)) level.textContent = this.level;
             byId('shot-meter').value = Math.max(0, 1 - (this.nextShot - this.elapsed) / SHOT_MS);
             const remaining = Math.max(0, Math.ceil((this.coffeeUntil - this.elapsed) / 1000));
             const effects = remaining ? 'Coffee ' + remaining + 's � x2' : '';
@@ -563,6 +624,7 @@ function boot() {
             }
             if (this.state !== STATES.PLAYING) return;
             this.drawScenery();
+            this.drawSpeedFX();
             this.updateStats();
             this.updateEffects();
             this.updateSpeech();
@@ -583,7 +645,7 @@ function boot() {
             if (level > this.level) {
                 this.level = level;
                 if (level % 5 === 0) this.bossQueued = true;
-                this.banner.setText('LEVEL ' + level).setVisible(true);
+                this.banner.setText('LEVEL ' + level).setAlpha(1).setVisible(true);
                 this.bannerUntil = this.elapsed + 1100;
                 this.speak('Level ' + level + '. Faster now.');
             }
@@ -660,12 +722,67 @@ function boot() {
             this.player.setScale(scale * (1 + squash), scale * (1 - squash));
         }
 
+        resetSky() {
+            this.skyStage = 'dawn';
+            this.skyTarget = 'dawn';
+            this.sky.setTexture('sky-dawn');
+            this.skyOverlay.setAlpha(0);
+        }
+
         drawScenery() {
-            const scroll = this.reducedMotion.matches ? 0 : this.scroll;
-            this.clouds.tilePositionX = scroll * 0.10;
+            const reduced = this.reducedMotion.matches;
+            const stage = SKY_PALETTES[Math.min(4, Math.floor((this.level - 1) / 2))][0];
+            if (stage !== this.skyTarget) {
+                this.skyTarget = stage;
+                this.skyBlendStart = this.elapsed;
+                this.skyOverlay.setTexture('sky-' + stage);
+            }
+            if (this.skyStage !== this.skyTarget) {
+                const blend = reduced ? 1 : Math.min(1, (this.elapsed - this.skyBlendStart) / 2000);
+                if (blend >= 1) {
+                    this.skyStage = this.skyTarget;
+                    this.sky.setTexture('sky-' + this.skyStage);
+                    this.skyOverlay.setAlpha(0);
+                } else {
+                    this.skyOverlay.setAlpha(blend * blend * (3 - 2 * blend));
+                }
+            }
+            this.clouds.setAlpha(stage === 'night' ? 0.38 : 0.85);
+            const scroll = reduced ? 0 : this.scroll;
+            this.clouds.tilePositionX = scroll * 0.08;
+            this.hills.tilePositionX = scroll * 0.16;
+            this.lot.tilePositionX = scroll * 0.52;
             this.road.tilePositionX = scroll;
             for (const { image, x, speed } of this.scenery) {
                 image.x = x - (scroll * speed) % WIDTH;
+            }
+        }
+
+        drawSpeedFX() {
+            this.streaks.clear();
+            this.trail.clear();
+            if (this.reducedMotion.matches || this.crashUntil) {
+                this.trailPoints.length = 0;
+                return;
+            }
+            const strength = Math.min(1, (scrollSpeed(this.scroll) - MIN_SPEED) / (MAX_SPEED - MIN_SPEED));
+            if (strength <= 0) return;
+            for (let i = 0; i < 8; i++) {
+                const x = ((i * 83 - this.scroll * 1.27) % WIDTH + WIDTH) % WIDTH;
+                const y = i < 4 ? 41 + i * 19 : GROUND + 45 + (i - 4) * 24;
+                this.streaks.fillStyle(0xe7edff, strength * (0.10 + i % 3 * 0.025))
+                    .fillRect(x, y, 22 + strength * (18 + i * 4), 2);
+            }
+            if (this.elapsed >= this.nextTrail) {
+                if (this.trailPoints.length === 6) this.trailPoints.shift();
+                this.trailPoints.push({ y: this.player.y, at: this.elapsed });
+                this.nextTrail = this.elapsed + 22;
+            }
+            for (const point of this.trailPoints) {
+                const age = this.elapsed - point.at;
+                if (age >= 132) continue;
+                this.trail.fillStyle(0xff8b72, strength * 0.23 * (1 - age / 132))
+                    .fillRoundedRect(START_X - 48 - age * 0.44, point.y - 3, 25, 6, 3);
             }
         }
 
@@ -708,11 +825,22 @@ function boot() {
                 if (!enemy) return false;
                 enemy.hp -= 1;
                 if (enemy.hp > 0) {
-                    enemy.hazard.setAlpha(0.7);
+                    enemy.hazard.setAlpha(0.78);
+                    if (!this.reducedMotion.matches) {
+                        enemy.hazard.setTintFill(0xffffff);
+                        enemy.flashUntil = this.elapsed + 80;
+                    }
                     return false;
                 }
                 enemy.hazard.setVisible(false);
+                if (!this.reducedMotion.matches) {
+                    const sprite = enemy.hazard;
+                    const flash = this.add.image(enemy.view.x, sprite.y, sprite.texture.key, sprite.frame.name)
+                        .setDisplaySize(sprite.displayWidth, sprite.displayHeight).setTintFill(0xffffff);
+                    this.addEffect(flash, 55, 0);
+                }
                 const boss = enemy.pattern === BOSS;
+                if (boss && !this.reducedMotion.matches) this.cameras.main.shake(180, 0.0028);
                 const points = boss ? 250 : 25;
                 this.addBonus(points);
                 const pop = this.add.sprite(enemy.view.x, enemy.hazard.y, 'pop-fx', this.firstFrame('pop-fx'));
@@ -801,6 +929,11 @@ function boot() {
                 const points = this.elapsed < this.coffeeUntil ? COIN_POINTS * 2 : COIN_POINTS;
                 this.addBonus(points);
                 this.showFeedback('+' + points, x, coin.y);
+                if (!this.reducedMotion.matches) {
+                    for (const [dx, dy] of [[-14, -8], [10, -14], [16, 8]]) {
+                        this.addEffect(this.add.star(x + dx, coin.y + dy, 4, 2, 6, 0xffe39d), 260, 14);
+                    }
+                }
                 this.coinStreak += 1;
                 if (this.coinStreak % 5 === 0) this.speak(this.coinStreak + ' tags in a row.');
                 else if (this.coinStreak === 1) this.speak('One for the road.');
@@ -877,11 +1010,19 @@ function boot() {
 
         addEffect(object, duration, rise) {
             object.setDepth(7);
+            if (this.effects.length >= 28) this.effects.shift().object.destroy();
             this.effects.push({ object, start: this.elapsed, duration, rise, y: object.y });
         }
 
         updateEffects() {
             if (this.elapsed >= this.bannerUntil) this.banner.setVisible(false);
+            else if (!this.reducedMotion.matches) this.banner.setAlpha(Math.min(1, (this.bannerUntil - this.elapsed) / 230));
+            for (const segment of this.segments) {
+                if (segment.flashUntil && (this.elapsed >= segment.flashUntil || this.reducedMotion.matches)) {
+                    segment.hazard.clearTint();
+                    segment.flashUntil = 0;
+                }
+            }
             if (this.elapsed >= this.flashUntil) this.player.clearTint();
             this.effects = this.effects.filter(({ object, start, duration, rise, y }) => {
                 const progress = (this.elapsed - start) / duration;

@@ -133,3 +133,19 @@ Windows Edge 157 via DevTools Protocol. The source files all matched the supplie
 | Missing optional files | PASS | Temporarily loaded the legacy bundle without optional strips. Start was enabled, the procedural drone loaded, and Taggy reverted to the original pose without warnings or exceptions. |
 | Source issue | OBSERVED | The first SOLD frame shows a thin stray mark to the right. The PNG remains unchanged. |
 | Physical phone and audio by ear | NOT TESTED | Touch was emulated. WebAudio unlock passed after a touch gesture. |
+
+## Phase 8 verification
+
+Windows Edge 157, headless, on ThinkServer TS140 with Xeon E3-1246 v3 and GTX 750 Ti installed. The DevTools launch used --disable-gpu. Browser requestAnimationFrame intervals were measured at a 900 × 1100 viewport with the 600 × 800 logical canvas. This measures delivered frame cadence on this machine, rather than isolated render cost or performance on a mid-range laptop.
+
+| Check | Result | Observed evidence |
+| --- | --- | --- |
+| File launch and hard reload | PASS | Both local scripts loaded with v=8 from the file URL. A cache-disabled hard reload reached Start. No uncaught exceptions or console warnings in the completed profile. |
+| Sky stages and HUD | PASS | Captured dawn, midday, sunset, dusk and night at 900 px desktop and 360 px viewport widths. The browser measured alpha 0.5 halfway through each transition and the new base palette after 2 seconds. Drone, bill, coin and HUD text were visible. The horizon stayed inside the playfield. |
+| Impact and speed FX | PASS | Captured boss and crash. Browser probes verified a white boss hit flash, retained pop sprite and shake on boss defeat, and active crash shake. Speed streaks and trail are drawn above the road and behind gameplay sprites. Transient effects are capped at 28 and trail samples at six. |
+| Reduced motion | PASS | Browser preference emulation applied the palette immediately and kept decorative parallax, streaks, trail and shake off. |
+| Missing optional sprites | PASS | A temporary Phase 6 bundle without optional art still enabled Start and rendered the procedural drone and original Taggy art without errors. Restored the shipped bundle afterwards. |
+| Maximum-speed frame cadence | PASS | 60.014 seconds at 230 logical px/s using scripted vertical input and the normal game loop. 3,601 frame intervals, 16.666 ms mean, 16.700 ms median and p95, 16.800 ms p99 and max, zero over 20 ms. No crash and level 9 reached. |
+| Physical phone, laptop and audible sound | NOT TESTED | 360 px was emulated. The workstation profile does not establish mid-range laptop performance. Audio was not listened to. |
+
+Capture filenames: dawn-900.png, midday-900.png, sunset-900.png, dusk-900.png, night-900.png, the corresponding five -360 captures, boss-fight.png, and crash-shake.png. The raw frame summary is frame-times.json beside the captures.

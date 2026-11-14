@@ -6,8 +6,8 @@
   <title>RV Dash</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@1,900&display=swap">
   <script defer src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
-  <script defer src="game_assets/embedded-assets.js?v=7"></script>
-  <script defer src="game.js?v=7"></script>
+  <script defer src="game_assets/embedded-assets.js?v=8"></script>
+  <script defer src="game.js?v=8"></script>
   <style>
     :root { --red: #dc2626; --black: #111111; --panel: #222222; --white: #ffffff; }
     * { box-sizing: border-box; }
@@ -18,7 +18,8 @@
       letter-spacing: -.045em; border-left: 5px solid var(--red); padding-left: 8px; }
     p { margin: 8px 0; }
     .brand { font-weight: 800; color: var(--white); }
-    .stats strong { border-bottom: 2px solid var(--red); color: var(--white); }
+    .stats > span { display: grid; gap: 2px; min-width: 42px; color: #dddde5; font-size: .7rem; font-weight: 750; }
+    .stats strong { border-bottom: 2px solid var(--red); color: var(--white); font-size: 1.125rem; line-height: 1.05; }
     .bar, .stores { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
     .bar { justify-content: space-between; margin: 12px 0 8px; min-height: 46px; }
     .stats { display: flex; flex-wrap: wrap; gap: 8px 16px; font-variant-numeric: tabular-nums; }

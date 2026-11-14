@@ -1,13 +1,13 @@
 # DONE
 
-Phase 7 integrates all ten supplied PNG strips with fractional source slicing, nearest-neighbor sampling and Taggy body anchoring. Original PNGs are unchanged. See ASSETS.md for geometry and VERIFY.md for desktop, 360 px and maximum-speed browser checks.
+Phase 8 adds cached sky palettes, parallax, speed streaks and trail, hit and pickup feedback, and a clearer HUD. Dawn covers levels 1–2, midday 3–4, sunset 5–6, dusk 7–8, and night 9 onward. Reduced motion switches skies immediately and disables decorative scrolling, streaks, trail, and shake. Gameplay tuning and source sprites are unchanged.
 
-Both local scripts use v=7. After changing game.js or embedded-assets.js, bump both versions together. Regenerate the bundle with python tools/embed-assets.py and FFmpeg available.
+Both local scripts use v=8. Bump both URLs together after changing game.js or the embedded bundle. VERIFY.md lists the screenshots and frame-time measurement.
 
 # NEXT STEP
 
-Play on a physical phone and review the supplied SOLD stamp artwork.
+Try the dusk and night stages on a physical phone and check contrast and motion comfort.
 
 # OPEN ISSUES
 
-The first SOLD frame has a thin stray mark at the right edge. Physical-phone play and audio by ear remain unverified. Phaser requires a reachable CDN or browser cache.
+Physical-phone play, mid-range laptop performance, and audio by ear remain unverified. Phaser still requires a reachable CDN or browser cache.
