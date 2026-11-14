@@ -168,3 +168,18 @@ Windows Edge 157 via DevTools Protocol, with the actual file URL at a 900 px des
 Source-to-output scale by frame in order: fly 0.176471 / 0.179104 / 0.175610 / 0.169811; shoot 0.145161 / 0.146939 / 0.147541; hit 0.059406 / 0.061224. Factors are uniform within each frame. The original PNGs and 42 × 50 player hitbox are unchanged. Hazard collisions and shot origins use Taggy's current x.
 
 Desktop and mobile captures and the measured pose comparison are in the Phase 9 screenshots folder. Captures cover left and right motion, both edges, 2 and 5 HP, damage blink, health pickup, game over, and 360 px touch.
+
+## Phase 10 verification
+
+Windows Edge 157 headless via DevTools Protocol. Tested desktop at 900 × 1100 and mobile emulation at 360 × 800.
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Offline file and hard reload | PASS | Actual file URL opened and hard-reloaded with the network disabled and cache bypassed. All three scripts and the stylesheet used v=10, Phaser reported 3.80.1, and there were zero external requests or console warnings. |
+| State and interaction captures | PASS | Captured start, playing, pause, game over, new best, hover and focus at both widths. A seeded score exercised each results state. The header and result updated to the new record. No horizontal overflow, and visible buttons were at least 44 px tall. |
+| Keyboard traversal and activation | PASS | Tab reached Start, Pause/Resume, Sound, both stores, the inventory link and Play again. Enter started, toggled sound, selected Sterling Heights and replayed. Space paused, resumed and selected DeWitt. The inventory link was focused and its destination checked without navigating away. |
+| Reduced motion and art fallback | PASS | Reduced motion removed pulse and shine animations. A temporary legacy bundle enabled Start with generated drone art and legacy Taggy without warnings. The current bundle was restored. |
+| Gameplay and frame cadence | PASS | The gameplay diff contains no input, canvas-sizing, or simulation changes. A scripted 12.016-second max-speed flight through the normal game loop produced 720 frame intervals, 16.69 ms mean, 16.70 ms median, 16.80 ms p95, 33.30 ms max, and one interval above 20 ms. No crash or console warning. |
+| Physical phone and audible audio | NOT TESTED | The narrow screen was emulated and sound state was inspected programmatically. |
+
+The Phase 10 capture folder includes the fourteen screenshots and frame-times.json.

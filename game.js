@@ -393,6 +393,7 @@ function boot() {
             this.player = this.add.sprite(START_X, FLOOR_Y, 'taggy-idle-right', 0).setScale(0.5).setDepth(5);
             this.muted = true;
             this.best = readBest();
+            byId('page-best').textContent = this.best.score;
             this.segments = [];
             this.effects = [];
             this.banner = this.add.text(WIDTH / 2, 100, '', {
@@ -630,11 +631,11 @@ function boot() {
             byId('start').disabled = false;
             byId('start').hidden = !intro;
             byId('intro').hidden = !intro;
-            byId('flight-hint').hidden = intro || this.state === GAME_OVER || this.finishedRuns > 0;
             byId('shot-status').hidden = intro || this.state === GAME_OVER;
             byId('pause').hidden = this.state !== PLAYING && this.state !== PAUSED;
             byId('pause').textContent = this.state === PAUSED ? 'Resume' : 'Pause';
             document.body.classList.toggle('in-flight', this.state === PLAYING);
+            document.body.classList.toggle('is-paused', this.state === PAUSED);
             byId('status').textContent = this.state === PAUSED ? 'Run paused. Select Resume to continue.' : '';
             byId('result').hidden = this.state !== GAME_OVER;
             byId('game-area').hidden = this.state === GAME_OVER;
@@ -1178,6 +1179,8 @@ function boot() {
                 // Keep the session best even when storage is blocked.
             }
             byId('final-score').textContent = 'Score ' + this.score + ' · Level ' + this.level;
+            byId('page-best').textContent = this.best.score;
+            byId('new-best').hidden = !record;
             byId('outcome').textContent = 'Best score ' + this.best.score + ' · Best level ' + this.best.level;
             this.setRoundState(STATES.GAME_OVER);
             byId('effects').hidden = true;

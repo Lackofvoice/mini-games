@@ -4,68 +4,21 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RV Dash</title>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@1,900&display=swap">
-  <script defer src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
-  <script defer src="game_assets/embedded-assets.js?v=9"></script>
-  <script defer src="game.js?v=9"></script>
-  <style>
-    :root { --red: #dc2626; --black: #111111; --panel: #222222; --white: #ffffff; }
-    * { box-sizing: border-box; }
-    [hidden] { display: none !important; }
-    body { margin: 0; background: var(--black); color: var(--white); font: 1rem system-ui, sans-serif; }
-    main { width: min(100% - 24px, 600px); margin: 16px auto; }
-    h1 { margin: 0; font: italic 900 clamp(2rem, 7vw, 3rem) Montserrat, "Arial Black", sans-serif;
-      letter-spacing: -.045em; border-left: 5px solid var(--red); padding-left: 8px; }
-    p { margin: 8px 0; }
-    .brand { font-weight: 800; color: var(--white); }
-    .stats > span { display: grid; gap: 2px; min-width: 42px; color: #dddde5; font-size: .7rem; font-weight: 750; }
-    .stats strong { border-bottom: 2px solid var(--red); color: var(--white); font-size: 1.125rem; line-height: 1.05; }
-    #health { color: #ff6b6b; letter-spacing: .1em; min-width: 75px; }
-    .bar, .stores { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-    .bar { justify-content: space-between; margin: 12px 0 8px; min-height: 46px; }
-    .stats { display: flex; flex-wrap: wrap; gap: 8px 16px; font-variant-numeric: tabular-nums; }
-    button, .cta { display: inline-grid; place-items: center; min-height: 44px; padding: 8px 12px;
-      border: 2px solid #666666; border-radius: 4px; color: var(--white); background: var(--panel);
-      font: inherit; font-weight: 700; cursor: pointer; }
-    button[aria-pressed="true"], .primary { background: var(--red); color: var(--white); border-color: var(--red); }
-    button:disabled { opacity: .55; cursor: default; }
-    :focus-visible { outline: 3px solid #ffffff; outline-offset: 3px; }
-    #playfield { position: relative; width: min(100%, 67dvh); aspect-ratio: 3 / 4; margin: auto; background: #494441; }
-    canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; touch-action: none; }
-    #legend { display: flex; gap: 6px; padding: 0; margin: 10px 0; list-style: none; }
-    #legend li { flex: 1; min-width: 0; text-align: center; font-size: .72rem; line-height: 1.15; }
-    #legend img { display: block; width: 32px; height: 32px; margin: 0 auto 3px; image-rendering: pixelated; }
-    #playfield { touch-action: none; user-select: none; }
-    #speech { position: absolute; pointer-events: none; max-width: min(166px, 48%); width: max-content;
-      margin: 0; padding: 5px 8px; border: 2px solid var(--red); border-radius: 10px;
-      background: var(--black); color: var(--white); font-size: .875rem; font-weight: 700; line-height: 1.15; }
-    #result { background: var(--panel); padding: 16px; border: 2px solid #666666; }
-    #result h2, #result h3 { margin: 0 0 8px; }
-    .result-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
-    #effects { color: var(--white); font-weight: 700; }
-    @media (max-width: 400px) {
-      .bar button { padding-inline: 8px; font-size: .875rem; }
-      .stats { gap: 8px; }
-    }
-    #shot-meter { width: 52px; height: 9px; accent-color: var(--red); }
-    #shot-status, #flight-hint { font-size: .8rem; }
-    #motion-note { display: none; font-size: .875rem; }
-    @media (prefers-reduced-motion: reduce) { #motion-note { display: block; } }
-    .in-flight { overscroll-behavior: none; }
-    .in-flight #game-area { touch-action: none; }
-    #status:empty { display: none; }
-    @media (orientation: landscape) and (max-height: 520px) {
-      #game-area { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px; }
-      #playfield { margin: 0; }
-    }
-  </style>
+  <link rel="stylesheet" href="arcade.css?v=10">
+  <script defer src="vendor/phaser.min.js?v=10"></script>
+  <script defer src="game_assets/embedded-assets.js?v=10"></script>
+  <script defer src="game.js?v=10"></script>
 </head>
 <body>
   <main>
-    <div class="brand">Price Right RV</div>
-    <h1>RV Dash</h1>
+    <header class="masthead">
+      <div>
+        <div class="brand">Price Right RV</div>
+        <h1>RV Dash</h1>
+      </div>
+      <div class="best-chip"><span>Best score</span><strong id="page-best">0</strong></div>
+    </header>
     <div id="intro">
-      <p id="flight-help">Fly with Up, W, or mouse hold. Shoot with Space. Move with Left/Right or A/D. On touch, hold and drag on the left to fly and steer. Tap right to shoot.</p>
       <p id="motion-note">Reduced motion: calmer scenery.</p>
       <ul id="legend" aria-label="Track items"></ul>
     </div>
@@ -76,7 +29,13 @@
       <label id="shot-status" hidden>Shot <progress id="shot-meter" aria-label="Shot readiness" max="1" value="1"></progress></label>
       <button id="sound" aria-pressed="false" disabled>Sound off</button>
     </div>
-    <p id="flight-hint" hidden>Up or W to fly. A/D or arrows to steer. Space to shoot. Touch left to fly and drag, right to shoot.</p>
+    <section id="flight-hint" class="controls-strip" aria-label="How to play">
+      <span><b>Fly</b> Up / W / mouse hold</span>
+      <span><b>Move</b> Left / Right or A / D</span>
+      <span><b>Shoot</b> Space</span>
+      <span><b>Pause</b> P</span>
+      <span class="touch-hint"><b>Touch</b> Hold and drag left to fly and steer. Tap right to shoot.</span>
+    </section>
     <p id="effects" hidden></p>
     <p id="status" role="status">Loading game…</p>
     <div id="game-area">
@@ -85,6 +44,7 @@
       </div>
     </div>
     <section id="result" hidden aria-labelledby="result-title">
+      <p id="new-best" hidden>New best</p>
       <h2 id="result-title" tabindex="-1">Run complete</h2>
       <p id="final-score"></p>
       <p id="outcome"></p>
@@ -98,7 +58,7 @@
       <p id="store-status" role="status">Select a store to enable the inventory link.</p>
       <div class="result-actions">
         <a id="inventory" class="cta primary" hidden>Browse inventory</a>
-        <button id="replay">Play again</button>
+        <button id="replay" class="primary">Play again</button>
       </div>
     </section>
   </main>
