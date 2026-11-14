@@ -197,3 +197,14 @@ Lot Hero was absent from the repair tree, scaffold and master. The Worker has di
 - **NOT TESTED.** Real deployment, real KV consistency, live-site CORS, physical phone, and audio by ear.
 
 Secret scan before commit used `git grep --cached -l -i -E PATTERN -- ':!*.png'` on tracked text and `git diff --cached --unified=0 | rg --count -i PATTERN` on the staged patch. Patterns covered GitHub/AWS token prefixes, private-key headers, token/account/API-key assignments, emails, 32-hex identifiers and IPv4 literals. Reviewed matches were loopback addresses needed for local testing and incidental embedded-art text. No credentials, account IDs, real namespace IDs or personal data were found. The namespace configuration and Wrangler state are ignored.
+
+## Phase 10b control-panel verification
+
+Windows Edge headless via DevTools, actual file URL, offline network emulation. Tested at 1280 × 1100 and 360 × 800.
+
+- PASS: ready, playing, paused and game-over readouts followed the existing DOM state. Tab reached the utility row and Skip intro with visible focus. Enter skipped the intro, started the game, opened and closed the controls dialog, and entered and exited fullscreen. The dialog returned focus to Controls.
+- PASS: both viewport widths had no horizontal overflow. Two locked slots had no actionable link. Both shopping links had the exact requested destinations and opened a new browsing context by markup. External destinations were not navigated in the offline run.
+- PASS: reduced motion skipped the intro and disabled decorative animations. File startup and gameplay made zero external HTTP requests with the default empty leaderboard configuration. No uncaught browser exceptions were observed.
+- PASS: the existing Phase 11 leaderboard mounted and showed its disabled-default status. The gameplay file, existing stylesheet, leaderboard client and sprite assets had no diff.
+- PASS: keyboard flight, steering, and shooting worked. A 120-second scripted flight through production simulation steps cleared all ten hazard/enemy patterns with two HP, reaching level 14 and 3,349 points. Two controlled hits exercised game over and results. Start during the intro dismissed it immediately.
+- NOT TESTED: physical phone, audio by ear, or separate hardware frame-time profiling. Cabinet effects animate transform, opacity and stepped clipping. Intro captures, ready layouts, pause and results are in the control-panel screenshot folder.

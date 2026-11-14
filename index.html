@@ -4,12 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RV Dash</title>
-  <link rel="stylesheet" href="arcade.css?v=11">
-  <script defer src="vendor/phaser.min.js?v=11"></script>
-  <script defer src="game_assets/embedded-assets.js?v=11"></script>
-  <script defer src="leaderboard-config.js?v=11"></script>
-  <script defer src="leaderboard.js?v=11"></script>
-  <script defer src="game.js?v=11"></script>
+  <link rel="stylesheet" href="arcade.css?v=12">
+  <link rel="stylesheet" href="cabinet.css?v=12">
+  <script defer src="vendor/phaser.min.js?v=12"></script>
+  <script defer src="game_assets/embedded-assets.js?v=12"></script>
+  <script defer src="leaderboard-config.js?v=12"></script>
+  <script defer src="leaderboard.js?v=12"></script>
+  <script defer src="game.js?v=12"></script>
+  <script defer src="cabinet.js?v=12"></script>
 </head>
 <body>
   <main>
@@ -20,62 +22,107 @@
       </div>
       <div class="best-chip"><span>Best score</span><strong id="page-best">0</strong></div>
     </header>
-    <div id="intro">
-      <p id="motion-note">Reduced motion: calmer scenery.</p>
-      <button id="view-scores-start" type="button">View scores</button>
-      <ul id="legend" aria-label="Track items"></ul>
-    </div>
-    <div class="bar">
-      <div class="stats"><span>Score <strong id="score">0</strong></span><span>Level <strong id="level">1</strong></span><span>Health <strong id="health" role="img" aria-label="Health 2 of 5">♥♥♡♡♡</strong></span></div>
-      <button id="start" class="primary" disabled>Start game</button>
-      <button id="pause" aria-label="Pause or resume (P or Escape)" hidden>Pause</button>
-      <label id="shot-status" hidden>Shot <progress id="shot-meter" aria-label="Shot readiness" max="1" value="1"></progress></label>
-      <button id="sound" aria-pressed="false" disabled>Sound off</button>
-    </div>
-    <section id="flight-hint" class="controls-strip" aria-label="How to play">
-      <span><b>Fly</b> Up / W / mouse hold</span>
-      <span><b>Move</b> Left / Right or A / D</span>
-      <span><b>Shoot</b> Space</span>
-      <span><b>Pause</b> P</span>
-      <span class="touch-hint"><b>Touch</b> Hold and drag left to fly and steer. Tap right to shoot.</span>
-    </section>
-    <p id="effects" hidden></p>
-    <p id="status" role="status">Loading game…</p>
-    <div id="game-area">
-      <div id="playfield" tabindex="-1" role="group" aria-label="Taggy flight course. Hold Up, W, mouse, or the left touch half to rise. Steer with Left/Right, A/D, or by dragging the left touch. Shoot with Space or tap the right touch half. Pause with P or Escape.">
-        <p id="speech" hidden></p>
+    <div class="cabinet-layout">
+      <section id="console" aria-label="RV Dash control panel">
+        <div class="instrument">
+          <div class="readout"><i aria-hidden="true"></i><span id="cabinet-status" role="status">Loading</span></div>
+          <div class="utility" role="group" aria-label="Utility keys">
+            <button id="sound" aria-pressed="false" disabled>Sound off</button>
+            <button id="fullscreen" type="button" aria-pressed="false">Fullscreen</button>
+            <button id="show-help" type="button" aria-haspopup="dialog">Controls</button>
+          </div>
+        </div>
+        <p id="utility-status" role="status" hidden></p>
+        <div id="mascot-intro" class="mascot-intro" hidden>
+          <div class="mascot-stage" aria-hidden="true">
+            <div class="rig"><div class="camper"></div><div class="cab"></div><i></i><i></i><img id="intro-taggy" alt=""></div>
+            <div class="coin-spray"></div>
+          </div>
+          <button id="skip-intro" type="button">Skip intro</button>
+        </div>
+        <div id="intro">
+          <p id="motion-note">Reduced motion: calmer scenery.</p>
+          <button id="view-scores-start" type="button">View scores</button>
+          <ul id="legend" aria-label="Track items"></ul>
+        </div>
+        <div class="bar">
+          <div class="stats"><span>Score <strong id="score">0</strong></span><span>Level <strong id="level">1</strong></span><span>Health <strong id="health" role="img" aria-label="Health 2 of 5">♥♥♡♡♡</strong></span></div>
+          <button id="start" class="primary" disabled>Start game</button>
+          <button id="pause" aria-label="Pause or resume (P or Escape)" hidden>Pause</button>
+          <label id="shot-status" hidden>Shot <progress id="shot-meter" aria-label="Shot readiness" max="1" value="1"></progress></label>
+        </div>
+        <section id="flight-hint" class="controls-strip" aria-label="How to play">
+          <span><b>Fly</b> Up / W / mouse hold</span>
+          <span><b>Move</b> Left / Right or A / D</span>
+          <span><b>Shoot</b> Space</span>
+          <span><b>Pause</b> P</span>
+          <span class="touch-hint"><b>Touch</b> Hold and drag left to fly and steer. Tap right to shoot.</span>
+        </section>
+        <p id="effects" hidden></p>
+        <p id="status" role="status">Loading game…</p>
+        <div id="game-area">
+          <div id="playfield" tabindex="-1" role="group" aria-label="Taggy flight course. Hold Up, W, mouse, or the left touch half to rise. Steer with Left/Right, A/D, or by dragging the left touch. Shoot with Space or tap the right touch half. Pause with P or Escape.">
+            <p id="speech" hidden></p>
+          </div>
+        </div>
+        <section id="result" hidden aria-labelledby="result-title">
+          <p id="new-best" hidden>New best</p>
+          <h2 id="result-title" tabindex="-1">Run complete</h2>
+          <p id="final-score"></p>
+          <p id="outcome"></p>
+          <p>Points are for entertainment and have no cash value.</p>
+          <h3>Your next step</h3>
+          <p>Choose a Price Right RV store to browse inventory.</p>
+          <div class="stores" role="group" aria-label="Choose your store">
+            <button data-store="dewitt" aria-pressed="false">DeWitt</button>
+            <button data-store="sterlingHeights" aria-pressed="false">Sterling Heights</button>
+          </div>
+          <p id="store-status" role="status">Select a store to enable the inventory link.</p>
+          <div class="result-actions">
+            <a id="inventory" class="cta primary" hidden>Browse inventory</a>
+            <button id="view-scores-result" type="button">View scores</button>
+            <button id="replay" class="primary">Play again</button>
+          </div>
+        </section>
+      <!-- Cabinet mount for RVLeaderboard.attach(gameId). The client owns visibility,
+           focus and async updates of the existing leaderboard section and child IDs. -->
+      <div id="leaderboard-mount">
+            <section id="leaderboard" aria-labelledby="board-title" hidden>
+              <header><h2 id="board-title" tabindex="-1">Leaderboard</h2><button id="close-board" type="button">Close</button></header>
+              <p id="board-status" role="status"></p>
+              <form id="initials-form" hidden novalidate>
+                <label for="initials">Three arcade initials</label>
+                <input id="initials" name="initials" maxlength="3" autocomplete="off" autocapitalize="characters" spellcheck="false">
+                <button id="submit-score" class="primary" type="submit">Submit</button>
+                <button id="skip-score" type="button">Skip</button>
+              </form>
+              <table><thead><tr><th scope="col">Rank</th><th scope="col">Initials</th><th scope="col">Score</th></tr></thead><tbody id="board-rows"></tbody></table>
+            </section>
       </div>
+      </section>
+      <aside class="side-panel" aria-label="Game and shopping controls">
+        <section class="panel-bank" aria-labelledby="game-select-title">
+          <h2 id="game-select-title">Game select</h2>
+          <ol id="game-slots"></ol>
+        </section>
+        <section class="panel-bank shop-bank" aria-labelledby="shop-title">
+          <h2 id="shop-title">Shop</h2>
+          <a class="shop-key" href="https://www.pricerightrv.com/rv-search?s=true&amp;condition=0" target="_blank" rel="noopener"><span>Browse Used RVs</span><span aria-hidden="true">↗</span></a>
+          <a class="shop-key" href="https://www.pricerightrv.com" target="_blank" rel="noopener"><span>Find Your RV</span><span aria-hidden="true">↗</span></a>
+        </section>
+      </aside>
     </div>
-    <section id="result" hidden aria-labelledby="result-title">
-      <p id="new-best" hidden>New best</p>
-      <h2 id="result-title" tabindex="-1">Run complete</h2>
-      <p id="final-score"></p>
-      <p id="outcome"></p>
-      <p>Points are for entertainment and have no cash value.</p>
-      <h3>Your next step</h3>
-      <p>Choose a Price Right RV store to browse inventory.</p>
-      <div class="stores" role="group" aria-label="Choose your store">
-        <button data-store="dewitt" aria-pressed="false">DeWitt</button>
-        <button data-store="sterlingHeights" aria-pressed="false">Sterling Heights</button>
-      </div>
-      <p id="store-status" role="status">Select a store to enable the inventory link.</p>
-      <div class="result-actions">
-        <a id="inventory" class="cta primary" hidden>Browse inventory</a>
-        <button id="view-scores-result" type="button">View scores</button>
-        <button id="replay" class="primary">Play again</button>
-      </div>
-    </section>
-    <section id="leaderboard" aria-labelledby="board-title" hidden>
-      <header><h2 id="board-title" tabindex="-1">Leaderboard</h2><button id="close-board" type="button">Close</button></header>
-      <p id="board-status" role="status"></p>
-      <form id="initials-form" hidden novalidate>
-        <label for="initials">Three arcade initials</label>
-        <input id="initials" name="initials" maxlength="3" autocomplete="off" autocapitalize="characters" spellcheck="false">
-        <button id="submit-score" class="primary" type="submit">Submit</button>
-        <button id="skip-score" type="button">Skip</button>
-      </form>
-      <table><thead><tr><th scope="col">Rank</th><th scope="col">Initials</th><th scope="col">Score</th></tr></thead><tbody id="board-rows"></tbody></table>
-    </section>
+    <dialog id="controls-dialog" aria-labelledby="controls-title">
+      <h2 id="controls-title">Flight controls</h2>
+      <dl>
+        <dt>Fly</dt><dd>Up, W or hold the mouse button.</dd>
+        <dt>Steer</dt><dd>Left / Right or A / D.</dd>
+        <dt>Shoot</dt><dd>Space.</dd>
+        <dt>Pause</dt><dd>P or Escape.</dd>
+        <dt>Touch</dt><dd>Hold and drag on the left to fly and steer. Tap the right to shoot.</dd>
+      </dl>
+      <form method="dialog"><button autofocus>Close controls</button></form>
+    </dialog>
   </main>
 </body>
 </html>
