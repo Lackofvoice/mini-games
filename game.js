@@ -359,6 +359,7 @@ function boot() {
 
     class DashScene extends Phaser.Scene {
         preload() {
+            for (const art of window.RV_OBSTACLES || []) this.load.image('obstacle-' + art.key, art.data);
             const assets = window.RV_DASH_EMBEDDED || {};
             this.loadFailures = new Set();
             const fail = (key) => {
@@ -996,7 +997,10 @@ function boot() {
 
         spawnPattern(pattern, index) {
             const view = this.add.container(WIDTH + 80, 0).setDepth(3);
-            const hazard = this.add.sprite(0, pattern.y, pattern.key, this.firstFrame(pattern.key));
+            const family = { cone: 'cone', fence: 'barrier', stump: 'pile', tire: 'tires' }[pattern.key];
+            const art = (window.RV_OBSTACLES || []).find((entry) => entry.family === family);
+            const texture = art && this.textures.exists('obstacle-' + art.key) ? 'obstacle-' + art.key : pattern.key;
+            const hazard = this.add.sprite(0, pattern.y, texture, this.firstFrame(texture));
             if (!this.anims.exists(pattern.key)) hazard.setDisplaySize(pattern.width, pattern.height);
             if (this.anims.exists(pattern.key) && !this.reducedMotion.matches) hazard.play(pattern.key);
             view.add(hazard);

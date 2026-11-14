@@ -1,0 +1,362 @@
+[
+  {
+    "key": "cone-1",
+    "family": "cone",
+    "file": "cone-1.png",
+    "width": 48,
+    "height": 48,
+    "hit": [
+      0.15,
+      0.36,
+      0.7,
+      0.6
+    ],
+    "type": "jump-over",
+    "weight": 4
+  },
+  {
+    "key": "cone-2",
+    "family": "cone",
+    "file": "cone-2.png",
+    "width": 48,
+    "height": 48,
+    "hit": [
+      0.15,
+      0.36,
+      0.7,
+      0.6
+    ],
+    "type": "jump-over",
+    "weight": 4
+  },
+  {
+    "key": "cone-3",
+    "family": "cone",
+    "file": "cone-3.png",
+    "width": 48,
+    "height": 48,
+    "hit": [
+      0.15,
+      0.36,
+      0.7,
+      0.6
+    ],
+    "type": "jump-over",
+    "weight": 4
+  },
+  {
+    "key": "pothole-1",
+    "family": "pothole",
+    "file": "pothole-1.png",
+    "width": 64,
+    "height": 48,
+    "hit": [
+      0.15,
+      0.68,
+      0.7,
+      0.26
+    ],
+    "type": "jump-over",
+    "weight": 3
+  },
+  {
+    "key": "pothole-2",
+    "family": "pothole",
+    "file": "pothole-2.png",
+    "width": 64,
+    "height": 48,
+    "hit": [
+      0.15,
+      0.68,
+      0.7,
+      0.26
+    ],
+    "type": "jump-over",
+    "weight": 3
+  },
+  {
+    "key": "pothole-3",
+    "family": "pothole",
+    "file": "pothole-3.png",
+    "width": 64,
+    "height": 48,
+    "hit": [
+      0.15,
+      0.68,
+      0.7,
+      0.26
+    ],
+    "type": "jump-over",
+    "weight": 3
+  },
+  {
+    "key": "tires-1",
+    "family": "tires",
+    "file": "tires-1.png",
+    "width": 64,
+    "height": 64,
+    "hit": [
+      0.15,
+      0.36,
+      0.7,
+      0.6
+    ],
+    "type": "dodge-around",
+    "weight": 2
+  },
+  {
+    "key": "tires-2",
+    "family": "tires",
+    "file": "tires-2.png",
+    "width": 64,
+    "height": 64,
+    "hit": [
+      0.15,
+      0.36,
+      0.7,
+      0.6
+    ],
+    "type": "dodge-around",
+    "weight": 2
+  },
+  {
+    "key": "crate-1",
+    "family": "crate",
+    "file": "crate-1.png",
+    "width": 64,
+    "height": 64,
+    "hit": [
+      0.15,
+      0.36,
+      0.7,
+      0.6
+    ],
+    "type": "jump-over",
+    "weight": 2
+  },
+  {
+    "key": "box-1",
+    "family": "box",
+    "file": "box-1.png",
+    "width": 48,
+    "height": 48,
+    "hit": [
+      0.15,
+      0.36,
+      0.7,
+      0.6
+    ],
+    "type": "jump-over",
+    "weight": 2
+  },
+  {
+    "key": "barrier-1",
+    "family": "barrier",
+    "file": "barrier-1.png",
+    "width": 96,
+    "height": 64,
+    "hit": [
+      0.15,
+      0.36,
+      0.7,
+      0.6
+    ],
+    "type": "dodge-around",
+    "weight": 2
+  },
+  {
+    "key": "barrier-2",
+    "family": "barrier",
+    "file": "barrier-2.png",
+    "width": 96,
+    "height": 64,
+    "hit": [
+      0.15,
+      0.36,
+      0.7,
+      0.6
+    ],
+    "type": "dodge-around",
+    "weight": 2
+  },
+  {
+    "key": "puddle-1",
+    "family": "puddle",
+    "file": "puddle-1.png",
+    "width": 64,
+    "height": 48,
+    "hit": [
+      0.15,
+      0.68,
+      0.7,
+      0.26
+    ],
+    "type": "slow-down",
+    "weight": 2
+  },
+  {
+    "key": "puddle-2",
+    "family": "puddle",
+    "file": "puddle-2.png",
+    "width": 64,
+    "height": 48,
+    "hit": [
+      0.15,
+      0.68,
+      0.7,
+      0.26
+    ],
+    "type": "slow-down",
+    "weight": 2
+  },
+  {
+    "key": "rock-1",
+    "family": "rock",
+    "file": "rock-1.png",
+    "width": 48,
+    "height": 48,
+    "hit": [
+      0.15,
+      0.36,
+      0.7,
+      0.6
+    ],
+    "type": "jump-over",
+    "weight": 2
+  },
+  {
+    "key": "rock-2",
+    "family": "rock",
+    "file": "rock-2.png",
+    "width": 48,
+    "height": 48,
+    "hit": [
+      0.15,
+      0.36,
+      0.7,
+      0.6
+    ],
+    "type": "jump-over",
+    "weight": 2
+  },
+  {
+    "key": "pile-1",
+    "family": "pile",
+    "file": "pile-1.png",
+    "width": 64,
+    "height": 64,
+    "hit": [
+      0.15,
+      0.36,
+      0.7,
+      0.6
+    ],
+    "type": "dodge-around",
+    "weight": 2
+  },
+  {
+    "key": "pile-2",
+    "family": "pile",
+    "file": "pile-2.png",
+    "width": 64,
+    "height": 64,
+    "hit": [
+      0.15,
+      0.36,
+      0.7,
+      0.6
+    ],
+    "type": "dodge-around",
+    "weight": 2
+  },
+  {
+    "key": "chock-1",
+    "family": "chock",
+    "file": "chock-1.png",
+    "width": 48,
+    "height": 48,
+    "hit": [
+      0.15,
+      0.36,
+      0.7,
+      0.6
+    ],
+    "type": "jump-over",
+    "weight": 2
+  },
+  {
+    "key": "light-1",
+    "family": "light",
+    "file": "overhead/light-1.png",
+    "width": 96,
+    "height": 96,
+    "hit": [
+      0.16,
+      0.68,
+      0.68,
+      0.25
+    ],
+    "type": "overhead",
+    "weight": 1
+  },
+  {
+    "key": "sale-1",
+    "family": "sale",
+    "file": "overhead/sale-1.png",
+    "width": 96,
+    "height": 96,
+    "hit": [
+      0.16,
+      0.68,
+      0.68,
+      0.25
+    ],
+    "type": "overhead",
+    "weight": 1
+  },
+  {
+    "key": "flags-1",
+    "family": "flags",
+    "file": "overhead/flags-1.png",
+    "width": 96,
+    "height": 96,
+    "hit": [
+      0.16,
+      0.68,
+      0.68,
+      0.25
+    ],
+    "type": "overhead",
+    "weight": 1
+  },
+  {
+    "key": "branch-1",
+    "family": "branch",
+    "file": "overhead/branch-1.png",
+    "width": 96,
+    "height": 96,
+    "hit": [
+      0.16,
+      0.68,
+      0.68,
+      0.25
+    ],
+    "type": "overhead",
+    "weight": 1
+  },
+  {
+    "key": "cable-1",
+    "family": "cable",
+    "file": "overhead/cable-1.png",
+    "width": 96,
+    "height": 96,
+    "hit": [
+      0.16,
+      0.68,
+      0.68,
+      0.25
+    ],
+    "type": "overhead",
+    "weight": 1
+  }
+]
