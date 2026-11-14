@@ -1,10 +1,105 @@
-"""Regenerate the classic-script asset bundle from the original PNGs."""
+"""Generate the file-safe art bundle without modifying the source PNGs.
+
+FFmpeg decodes the large optional strips. Frame alignment, nearest-neighbor
+resampling, and PNG encoding use Python's standard library.
+"""
 import base64
 import json
 from pathlib import Path
+import struct
+import subprocess
+import zlib
 
 
-ASSETS = Path(__file__).resolve().parents[1] / "game_assets"
+ROOT = Path(__file__).resolve().parents[1]
+ASSETS = ROOT / "game_assets"
+# Source size, frame count, normalized frame size, target opaque width.
+STRIPS = {
+    "taggy-fly": (2172, 724, 4, 144, 128, 96),
+    "taggy-shoot": (2172, 724, 3, 144, 128, 96),
+    "taggy-hit": (1774, 887, 2, 144, 128, 96),
+    "drone": (2172, 724, 4, 96, 96, 72),
+    "bird": (2172, 724, 4, 96, 96, 72),
+    "cart": (2172, 724, 4, 120, 100, 96),
+    "boss-sold": (2172, 724, 4, 272, 272, 240),
+    "bill-projectile": (2172, 724, 4, 52, 52, 40),
+    "coin": (2172, 724, 6, 48, 48, 36),
+    "pop-fx": (2172, 724, 5, 96, 96, 80),
+}
+
+
+def encode_png(width, height, rgba):
+    def chunk(kind, data):
+        return struct.pack("!I", len(data)) + kind + data + struct.pack("!I", zlib.crc32(kind + data))
+
+    rows = b"".join(b"\0" + rgba[start:start + 4 * width] for start in range(0, len(rgba), 4 * width))
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack("!IIBBBBB", width, height, 8, 6, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(rows, 9)) + chunk(b"IEND", b""))
+
+
+def strip_png(path, geometry):
+    width, height, count, frame_w, frame_h, target_w = geometry
+    source = subprocess.check_output([
+        "ffmpeg", "-v", "error", "-i", str(path), "-frames:v", "1",
+        "-pix_fmt", "rgba", "-f", "rawvideo", "-"
+    ])
+    if struct.unpack("!II", path.read_bytes()[16:24]) != (width, height) or len(source) != width * height * 4:
+        raise ValueError(f"{path.name}: unexpected source geometry")
+
+    frames = []
+    taggy = path.stem.startswith("taggy-")
+    for i in range(count):
+        # Compute both edges from the exact strip fraction, including 434.4 px cells.
+        left, right = round(i * width / count), round((i + 1) * width / count)
+        xs, ys, body_x, body_y = [], [], [], []
+        for y in range(height):
+            for x in range(left, right):
+                j = (y * width + x) * 4
+                if source[j + 3] < 96:
+                    continue
+                xs.append(x)
+                ys.append(y)
+                if taggy and source[j] > 120 and source[j] > 1.65 * max(source[j + 1], source[j + 2]):
+                    body_x.append(x)
+                    body_y.append(y)
+        if not xs:
+            raise ValueError(f"{path.name}: frame {i + 1} has no visible pixels")
+        bounds = (min(xs), min(ys), max(xs), max(ys))
+        if body_x:
+            anchor = ((min(body_x) + max(body_x)) / 2, (min(body_y) + max(body_y)) / 2)
+        else:
+            anchor = ((bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2)
+        frames.append((left, right, bounds, anchor))
+
+    if path.stem == "taggy-hit":
+        scale = min(56 / max(b[3] - b[1] + 1 for _, _, b, _ in frames),
+                    target_w / max(b[2] - b[0] + 1 for _, _, b, _ in frames))
+    else:
+        scale = target_w / max(b[2] - b[0] + 1 for _, _, b, _ in frames)
+    for _, _, (x0, y0, x1, y1), (ax, ay) in frames:
+        scale = min(scale, (frame_w / 2 - 2) / max(ax - x0, x1 - ax, 1),
+                    (frame_h / 2 - 2) / max(ay - y0, y1 - ay, 1))
+
+    sheet_w = count * frame_w
+    sheet = bytearray(sheet_w * frame_h * 4)
+    for i, (left, right, _, (ax, ay)) in enumerate(frames):
+        for y in range(frame_h):
+            sy = round(ay + (y + 0.5 - frame_h / 2) / scale)
+            if not 0 <= sy < height:
+                continue
+            for x in range(frame_w):
+                sx = round(ax + (x + 0.5 - frame_w / 2) / scale)
+                if left <= sx < right:
+                    start = (sy * width + sx) * 4
+                    dest = (y * sheet_w + i * frame_w + x) * 4
+                    sheet[dest:dest + 4] = source[start:start + 4]
+    return encode_png(sheet_w, frame_h, sheet)
+
+
+def data_uri(png):
+    return "data:image/png;base64," + base64.b64encode(png).decode("ascii")
+
+
 files = {
     "taggy-idle-right": "taggy/taggy_idle.png",
     "taggy-walk-right": "taggy/taggy_walk.png",
@@ -13,13 +108,11 @@ files = {
     "taggy-keys": "taggy/taggy_keys.png",
 }
 files.update({p.stem: p.relative_to(ASSETS) for p in sorted((ASSETS / "simlab").glob("*.png"))})
-files.update({
-    p.stem: p for p in sorted((ASSETS.parent / "assets" / "sprites").glob("*.png"))
-})
-uris = {
-    key: "data:image/png;base64," + base64.b64encode((ASSETS / path).read_bytes()).decode("ascii")
-    for key, path in files.items()
-}
+uris = {key: data_uri((ASSETS / path).read_bytes()) for key, path in files.items()}
+for key, geometry in STRIPS.items():
+    path = ROOT / "assets" / "sprites" / (key + ".png")
+    if path.is_file():
+        uris[key] = data_uri(strip_png(path, geometry))
 (ASSETS / "embedded-assets.js").write_text(
     "// Generated by tools/embed-assets.py.\nwindow.RV_DASH_EMBEDDED = "
     + json.dumps(uris, indent=4) + ";\n",

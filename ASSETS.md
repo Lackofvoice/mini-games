@@ -57,3 +57,22 @@ Place PNGs in assets/sprites and run `python tools/embed-assets.py` to make the 
 | bill-projectile.png | 48 × 32 | 12 |
 | coin.png | 64 × 64 | 10 |
 | pop-fx.png | 64 × 64 | 16 |
+
+## Phase 7 shipped strips
+
+The ten supplied PNGs in assets/sprites are kept byte-for-byte. Run python tools/embed-assets.py with FFmpeg available to rebuild the classic bundle. The generator decodes source PNGs, computes each source edge independently from its exact fraction of the strip, aligns opaque art inside fixed output cells, then downsamples with nearest-neighbor. Taggy uses the center of the red body across poses. The legacy idle and walking sprites remain in use on the floor.
+
+| Strip | Frames | FPS | Runtime frame |
+| --- | --- | --- | --- |
+| Taggy fly | 4 | 10 | 144 × 128 |
+| Taggy shoot | 3 | 14 | 144 × 128 |
+| Taggy hit | 2 | 8 | 144 × 128 |
+| Drone | 4 | 12 | 96 × 96 |
+| Bird | 4 | 10 | 96 × 96 |
+| Cart | 4 | 12 | 120 × 100 |
+| SOLD stamp | 4 | 6 | 272 × 272 |
+| Bill | 4 | 16 | 52 × 52 |
+| Coin | 6 | 10 | 48 × 48 |
+| Pop | 5 | 18 | 96 × 96 |
+
+Shoot, hit and pop play once. Runtime frame size includes transparent margins. The source coin frame is exactly 362 px wide. The pop frame is 434.4 px wide, so sampling uses independently rounded pixel edges to avoid cumulative drift. Missing optional PNGs use the Phase 6 fallback.

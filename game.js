@@ -17,11 +17,11 @@ const LEVEL_DISTANCE = 3000;
 const SHOT_MS = 350;
 const SHOT_SPEED = 690;
 const ENEMIES = [
-    { key: 'drone', y: 395, width: 90, height: 58, lane: 'high', hp: 1 },
-    { key: 'bird', y: 300, width: 76, height: 54, lane: 'high', hp: 1 },
-    { key: 'cart', y: 598, width: 100, height: 79, lane: 'low', hp: 2 }
+    { key: 'drone', y: 395, width: 66, height: 39, lane: 'high', hp: 1 },
+    { key: 'bird', y: 300, width: 60, height: 35, lane: 'high', hp: 1 },
+    { key: 'cart', y: 609, width: 85, height: 52, lane: 'low', hp: 2 }
 ];
-const BOSS = { key: 'boss-sold', y: 310, width: 160, height: 115, lane: 'high', hp: 10 };
+const BOSS = { key: 'boss-sold', y: 290, width: 204, height: 214, lane: 'high', hp: 10 };
 const SPRITES = {
     'taggy-idle-right': ['game_assets/taggy/taggy_idle.png', 160, 144, 1, 0],
     'taggy-walk-right': ['game_assets/taggy/taggy_walk.png', 160, 144, 4, 7.14],
@@ -29,16 +29,16 @@ const SPRITES = {
     'prop_fence_segment': ['game_assets/simlab/prop_fence_segment.png', 0, 0, 1, 0],
     'lite_tt_v2': ['game_assets/simlab/lite_tt_v2.png', 0, 0, 1, 0],
     'generic_bunkhouse_fifth_wheel_teal': ['game_assets/simlab/generic_bunkhouse_fifth_wheel_teal.png', 0, 0, 1, 0],
-    'taggy-fly': ['assets/sprites/taggy-fly.png', 160, 144, 4, 12],
-    'taggy-shoot': ['assets/sprites/taggy-shoot.png', 160, 144, 4, 14],
-    'taggy-hit': ['assets/sprites/taggy-hit.png', 160, 144, 4, 10],
-    'drone': ['assets/sprites/drone.png', 96, 64, 4, 10],
-    'bird': ['assets/sprites/bird.png', 96, 64, 4, 12],
-    'cart': ['assets/sprites/cart.png', 112, 80, 4, 9],
-    'boss-sold': ['assets/sprites/boss-sold.png', 160, 120, 4, 8],
-    'bill-projectile': ['assets/sprites/bill-projectile.png', 48, 32, 4, 12],
-    'coin': ['assets/sprites/coin.png', 64, 64, 4, 10],
-    'pop-fx': ['assets/sprites/pop-fx.png', 64, 64, 4, 16]
+    'taggy-fly': ['assets/sprites/taggy-fly.png', 144, 128, 4, 10],
+    'taggy-shoot': ['assets/sprites/taggy-shoot.png', 144, 128, 3, 14],
+    'taggy-hit': ['assets/sprites/taggy-hit.png', 144, 128, 2, 8],
+    'drone': ['assets/sprites/drone.png', 96, 96, 4, 12],
+    'bird': ['assets/sprites/bird.png', 96, 96, 4, 10],
+    'cart': ['assets/sprites/cart.png', 120, 100, 4, 12],
+    'boss-sold': ['assets/sprites/boss-sold.png', 272, 272, 4, 6],
+    'bill-projectile': ['assets/sprites/bill-projectile.png', 52, 52, 4, 16],
+    'coin': ['assets/sprites/coin.png', 48, 48, 6, 10],
+    'pop-fx': ['assets/sprites/pop-fx.png', 96, 96, 5, 18]
 };
 const MIN_SPEED = 132;
 const MAX_SPEED = 230;
@@ -441,7 +441,15 @@ function boot() {
                 ['cone', 'Avoid cones'], ['tire', 'Avoid tires']
             ]) {
                 const item = document.createElement('li');
-                const icon = this.textures.get(key).getSourceImage();
+                const texture = this.textures.get(key);
+                const frame = texture.get(this.firstFrame(key));
+                const icon = document.createElement('canvas');
+                icon.width = frame.cutWidth;
+                icon.height = frame.cutHeight;
+                const context = icon.getContext('2d');
+                context.imageSmoothingEnabled = false;
+                context.drawImage(texture.getSourceImage(), frame.cutX, frame.cutY,
+                    frame.cutWidth, frame.cutHeight, 0, 0, icon.width, icon.height);
                 const image = document.createElement('img');
                 image.src = icon.toDataURL();
                 image.alt = '';
@@ -647,8 +655,9 @@ function boot() {
             const tilt = this.verticalSpeed / MAX_VERTICAL_SPEED * 9;
             this.player.setAngle(reduced ? 0 : this.player.angle + (tilt - this.player.angle) * (1 - Math.exp(-13 * dt)));
             const squash = reduced ? 0 : Math.max(0, 1 - (this.elapsed - this.landedAt) / 145) * 0.13;
-            this.player.setScale(0.5 * (1 + squash), 0.5 * (1 - squash));
             this.drawTaggy(thrusting);
+            const scale = ['taggy-fly', 'taggy-shoot', 'taggy-hit'].includes(this.player.texture.key) ? 1 : 0.5;
+            this.player.setScale(scale * (1 + squash), scale * (1 - squash));
         }
 
         drawScenery() {
@@ -666,7 +675,7 @@ function boot() {
             if (this.elapsed < this.shotPoseUntil) key = 'taggy-shoot';
             if ((thrusting || airborne || key === 'taggy-shoot' || this.state === STATES.PLAYING)
                 && !this.reducedMotion.matches && this.anims.exists(key)) {
-                this.player.play(key, true);
+                if (key !== 'taggy-shoot') this.player.play(key, true);
             } else if (this.player.texture.key !== 'taggy-idle-right') {
                 this.player.anims.stop();
                 this.player.setTexture('taggy-idle-right', 0);
@@ -676,8 +685,12 @@ function boot() {
         fire() {
             if (this.elapsed < this.nextShot || this.crashUntil) return;
             this.nextShot = this.elapsed + SHOT_MS;
-            this.shotPoseUntil = this.elapsed + 190;
-            const shot = this.add.sprite(START_X + 29, this.player.y, 'bill-projectile', this.firstFrame('bill-projectile')).setDisplaySize(30, 20).setDepth(4);
+            this.shotPoseUntil = this.elapsed + 3 * 1000 / 14;
+            if (this.anims.exists('taggy-shoot') && !this.reducedMotion.matches) {
+                this.player.play('taggy-shoot').setScale(1);
+            }
+            const shot = this.add.sprite(START_X + 29, this.player.y, 'bill-projectile', this.firstFrame('bill-projectile')).setDepth(4);
+            if (!this.anims.exists('bill-projectile')) shot.setDisplaySize(40, 27);
             if (this.anims.exists('bill-projectile') && !this.reducedMotion.matches) shot.play('bill-projectile');
             this.shots.push(shot);
             this.playPickupSound('shot');
@@ -704,7 +717,7 @@ function boot() {
                 this.addBonus(points);
                 const pop = this.add.sprite(enemy.view.x, enemy.hazard.y, 'pop-fx', this.firstFrame('pop-fx'));
                 if (this.anims.exists('pop-fx') && !this.reducedMotion.matches) pop.play('pop-fx');
-                this.addEffect(pop, 260, 12);
+                this.addEffect(pop, 5 * 1000 / 18, 0);
                 this.showFeedback('+' + points, enemy.view.x, enemy.hazard.y);
                 this.speak(boss ? 'Stamp returned to sender.' : 'That clears the lane.');
                 this.playPickupSound('score');
@@ -718,13 +731,14 @@ function boot() {
 
         spawnPattern(pattern, index) {
             const view = this.add.container(WIDTH + 80, 0).setDepth(3);
-            const hazard = this.add.sprite(0, pattern.y, pattern.key, this.firstFrame(pattern.key)).setDisplaySize(pattern.width, pattern.height);
+            const hazard = this.add.sprite(0, pattern.y, pattern.key, this.firstFrame(pattern.key));
+            if (!this.anims.exists(pattern.key)) hazard.setDisplaySize(pattern.width, pattern.height);
             if (this.anims.exists(pattern.key) && !this.reducedMotion.matches) hazard.play(pattern.key);
             view.add(hazard);
             const routeY = pattern.lane === 'high' ? 530 : 455;
             const coins = Array.from({ length: 5 }, (_, i) => {
                 const y = routeY - (pattern.coins === 'arc' ? Math.sin(i / 4 * Math.PI) * 65 : 0);
-                return this.add.sprite((i - 2) * 46, y, 'coin', this.firstFrame('coin')).setDisplaySize(35, 35);
+                return this.add.sprite((i - 2) * 46, y, 'coin', this.firstFrame('coin')).setScale(this.anims.exists('coin') ? 1 : 0.55);
             });
             if (index % 5 === 3) coins[2].setTexture('coffee').setDisplaySize(35, 35);
             if (this.anims.exists('coin') && !this.reducedMotion.matches) {
@@ -802,7 +816,7 @@ function boot() {
             this.flashUntil = this.elapsed + 180;
             this.clearInput();
             this.player.anims.pause();
-            if (this.anims.exists('taggy-hit') && !this.reducedMotion.matches) this.player.play('taggy-hit');
+            if (this.anims.exists('taggy-hit') && !this.reducedMotion.matches) this.player.play('taggy-hit').setScale(1);
             if (!this.reducedMotion.matches) this.cameras.main.shake(145, 0.003);
             this.speak("Ouch... that's a tag!");
             if (!this.reducedMotion.matches) this.player.setTint(0xff8267);

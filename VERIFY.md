@@ -118,3 +118,18 @@ Windows Edge 157 via DevTools Protocol. Tested the actual file URL and loopback 
 | Art fallback and replacement | PASS | With optional files absent, fallback textures loaded without console warnings or uncaught exceptions. A temporary 384 × 64 drone strip, processed by the committed embed workflow, loaded as four 96 × 64 frames at 10 fps. The fixture was removed and the original bundle restored. |
 | Mute, pause, restart and best | PASS | Started muted. A touch gesture opened a running WebAudio context. Pause and resume held and restarted gameplay. Space during crash lock did not restart. The result best matched localStorage. |
 | Physical phone and audio by ear | NOT TESTED | Touch was emulated and sound state was inspected programmatically. |
+
+## Phase 7 verification
+
+Windows Edge 157 via DevTools Protocol. The source files all matched the supplied dimensions. The original PNGs are committed without edits.
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| File launch and hard reload | PASS | Opened the checkout through file:// and reloaded with browser cache disabled. Both local scripts used v=7. The finished build produced no uncaught errors or console warnings. |
+| Frames and cadence | PASS | Phaser reported all ten specified frame counts and frame rates. Taggy was captured in flight, shooting, and hit states. Shooting consumed a real bill projectile and a kill showed the supplied pop sprite. |
+| Desktop and 360 px | PASS | Inspected 600-logical-pixel desktop and 360 px viewport captures. Edges remained pixelated and the 360 px page had no horizontal overflow. Desktop captures cover start, flight, shot, hit, drone, bird, cart, boss, coin pickup and pop. |
+| Alignment and collision | PASS | Runtime strips center Taggy on the red tag body with one common scale per pose. Enemy boxes were adjusted to inset the centered art, with the larger SOLD body receiving a larger box. The projectile still passed through fences, and drone and cart HP and boss defeat behavior passed. |
+| Passability and controls | PASS | A 120-second scripted route at maximum speed cleared all six dodge hazards, three enemies and the enlarged boss with drops active. 360 px left touch held flight and right touch fired. Pause, restart lockout and saved best matched Phase 6. |
+| Missing optional files | PASS | Temporarily loaded the legacy bundle without optional strips. Start was enabled, the procedural drone loaded, and Taggy reverted to the original pose without warnings or exceptions. |
+| Source issue | OBSERVED | The first SOLD frame shows a thin stray mark to the right. The PNG remains unchanged. |
+| Physical phone and audio by ear | NOT TESTED | Touch was emulated. WebAudio unlock passed after a touch gesture. |

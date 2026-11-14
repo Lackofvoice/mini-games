@@ -1,13 +1,13 @@
 # DONE
 
-Phase 6 separates flight (Up, W, mouse hold, left touch) and shooting (Space, right touch). P and Escape pause. Smoothed flight, the 350 ms shot meter, three enemies, and the ten-hit SOLD stamp are in place. Missing optional artwork falls back to the original Taggy pose or generated textures. See VERIFY.md for browser evidence.
+Phase 7 integrates all ten supplied PNG strips with fractional source slicing, nearest-neighbor sampling and Taggy body anchoring. Original PNGs are unchanged. See ASSETS.md for geometry and VERIFY.md for desktop, 360 px and maximum-speed browser checks.
 
-Both local scripts use v=6. Bump both URLs together after changing game.js or the embedded bundle. Place optional strips in assets/sprites and regenerate the bundle with python tools/embed-assets.py. ASSETS.md lists frame sizes and rates.
+Both local scripts use v=7. After changing game.js or embedded-assets.js, bump both versions together. Regenerate the bundle with python tools/embed-assets.py and FFmpeg available.
 
 # NEXT STEP
 
-Try the opening flight and combat on a physical phone, including two-thumb input and sound.
+Play on a physical phone and review the supplied SOLD stamp artwork.
 
 # OPEN ISSUES
 
-Physical-phone feel and audio by ear remain unverified. Optional production sprite strips are pending. Phaser still requires a reachable CDN or browser cache.
+The first SOLD frame has a thin stray mark at the right edge. Physical-phone play and audio by ear remain unverified. Phaser requires a reachable CDN or browser cache.
