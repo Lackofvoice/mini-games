@@ -10,7 +10,7 @@ ROLLBACK_POINT: 093ccfd92cc7d6c3df53dd1c41376e2305498d18
 5. Walkable road and lanes: done. Taggy walks on three asphalt lanes and casts a shadow. Q/E step while grounded, preserving existing lift and Down actions. The next step wires lane collisions to the new ground patterns.
 6. Obstacle patterns: done. Seeded decks unlock groups by level. Each ground group leaves a lane clear. Timing uses current world speed. Slows reduce horizontal speed by 20% for 650 ms. Existing bosses and combat remain separate.
 7. Browser verification: done. Edge scripted run reached level 4; all 24 contacts checked, live leaderboard read passed, approximately 60 fps with overlay. Captures are in docs/phase11.
-8. Push and pinned preview: final checkpoint. Next action is normal push to origin/rv-dash-repair and pinned preview boot verification.
+8. Push and pinned preview: release checkpoint. Verify the pinned index.html after the normal branch push.
 # Lot Hero discovery
 
 No Lot Hero game was found in the repair tree, the old rv-sale-dash-game scaffold or master. Lot Hero appears as a locked cabinet slot. Phase 11 reserves a separate Lot Hero board.
