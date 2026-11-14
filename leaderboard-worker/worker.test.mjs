@@ -55,3 +55,26 @@ test('boards are separate; ties keep arrival order and storage caps at 25', asyn
     assert.equal((await call('lot-hero', { initials: 'XYZ', score: 10 }))[0], 201);
     assert.equal((await call('lot-hero'))[1][0].score, 10);
 });
+
+test('preview origin can read both boards and preflight a submission', async () => {
+    const env = { LEADERBOARD: memoryKV() };
+    const origin = 'https://raw.githack.com';
+    for (const game of ['rv-dash', 'lot-hero']) {
+        const url = 'https://worker.example/api/leaderboard/' + game;
+        const read = await handle(new Request(url, { headers: { Origin: origin } }), env);
+        assert.equal(read.status, 200);
+        assert.equal(read.headers.get('Access-Control-Allow-Origin'), origin);
+        assert.deepEqual(await read.json(), []);
+        const preflight = await handle(new Request(url, {
+            method: 'OPTIONS',
+            headers: { Origin: origin, 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'content-type' }
+        }), env);
+        assert.equal(preflight.status, 200);
+        assert.equal(preflight.headers.get('Access-Control-Allow-Origin'), origin);
+        assert.match(preflight.headers.get('Access-Control-Allow-Methods'), /\bPOST\b/);
+        assert.equal(preflight.headers.get('Access-Control-Allow-Headers'), 'Content-Type');
+        const denied = await handle(new Request(url, { headers: { Origin: 'https://other.example' } }), env);
+        assert.equal(denied.status, 403);
+        assert.equal(denied.headers.get('Access-Control-Allow-Origin'), null);
+    }
+});

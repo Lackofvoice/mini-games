@@ -15,7 +15,7 @@ Run `node --test leaderboard-worker/worker.test.mjs` from the repository root. T
 5. Run `npx wrangler secret put IP_SALT` and enter a locally generated random secret. A missing salt uses unsalted SHA-256 and emits no log. Raw IPs are never stored.
 6. Run `npx wrangler deploy` and paste the reported workers.dev base URL into leaderboard-config.js.
 
-No deploy or login was performed during this phase. CORS lists the dealership origins and four local origins in ORIGINS in worker.mjs. To support raw.githack.com, add its exact origin there as one entry. File mode uses the mock only when configured.
+CORS lists both dealership origins, raw.githack.com for pinned play links, and four local origins in ORIGINS in worker.mjs. File mode can use the local mock. The live Worker does not accept the file origin.
 
 ## Limits and score caps
 

@@ -41,4 +41,4 @@ The project has no build step. The intended deployment surface is a dedicated ga
 
 ## Online scores
 
-The online leaderboard is disabled in the shipped leaderboard-config.js. See [local tests and Jay deploy steps](leaderboard-worker/README.md) for the Worker and per-game board setup. Local best scores work independently.
+The online leaderboard endpoint is set in leaderboard-config.js. Set it to an empty string to disable the online board. See [local tests and Jay deploy steps](leaderboard-worker/README.md) for the Worker and per-game board setup. Local best scores work independently.

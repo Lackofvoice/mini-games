@@ -3,6 +3,7 @@ import { blockedInitials } from './initials-filter.mjs';
 const CAPS = new Map([['rv-dash', 100000], ['lot-hero', 100000]]);
 const ORIGINS = new Set([
     'https://www.pricerightrv.com', 'https://pricerightrv.com',
+    'https://raw.githack.com',
     'http://localhost:8787', 'http://127.0.0.1:8787',
     'http://localhost:8000', 'http://127.0.0.1:8000'
 ]);
