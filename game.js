@@ -9,6 +9,12 @@ const MAX_VERTICAL_SPEED = 330;
 const CEILING_Y = 36;
 const FLOOR_Y = GROUND - 32;
 const START_X = 150;
+const EDGE_MARGIN = 54;
+const MOVE_SPEED = 245;
+const MAX_HP = 5;
+const START_HP = 2;
+const IMMUNITY_MS = 1500;
+const HEALTH_MS = 52000;
 const CRASH_MS = 520;
 const BRAND_RED = 0xdc2626;
 const IDLE_LINES = ['Nice day for a cruise.', 'Taking the scenic route.', 'Still with me?'];
@@ -166,6 +172,11 @@ function makeTextures(scene) {
         graphics.fillStyle(0xffffff).fillRoundedRect(18, 23, 22, 18, 3);
         graphics.fillStyle(0xffffff).fillTriangle(39, 23, 48, 32, 39, 41);
         graphics.fillStyle(BRAND_RED).fillCircle(39, 32, 2);
+    });
+    texture('health', 48, 48, () => {
+        box(BRAND_RED, 4, 4, 40, 40, 11);
+        rect(0xffffff, 20, 12, 8, 24);
+        rect(0xffffff, 12, 20, 24, 8);
     });
     texture('coffee', 64, 64, () => {
         circle(0xdb9c68, 49, 35, 12);
@@ -348,6 +359,8 @@ function boot() {
             this.elapsed = 0;
             this.store = null;
             this.flightKeys = new Set();
+            this.moveKeys = new Set();
+            this.hp = START_HP;
             this.spaceHeld = false;
             this.pointerId = null;
             this.shots = [];
@@ -442,11 +455,14 @@ function boot() {
                     return;
                 }
                 const fly = code === 'ArrowUp' || code === 'KeyW';
-                if ((!fly && code !== 'Space') || event.target.closest('button, a') || this.state === STATES.PAUSED) return;
+                const move = ['ArrowLeft', 'ArrowRight', 'KeyA', 'KeyD'].includes(code);
+                if (move && this.state !== STATES.PLAYING) return;
+                if ((!fly && !move && code !== 'Space') || event.target.closest('button, a') || this.state === STATES.PAUSED) return;
                 event.preventDefault();
                 if (event.repeat || this.crashUntil && this.state === STATES.PLAYING) return;
                 if (this.state !== STATES.PLAYING) this.start();
-                if (fly) this.flightKeys.add(code);
+                if (move) this.moveKeys.add(code);
+                else if (fly) this.flightKeys.add(code);
                 else {
                     this.spaceHeld = true;
                     this.fire();
@@ -454,6 +470,7 @@ function boot() {
             });
             on(document, 'keyup', (event) => {
                 this.flightKeys.delete(event.code);
+                this.moveKeys.delete(event.code);
                 if (event.code === 'Space') this.spaceHeld = false;
             });
             const field = byId('playfield');
@@ -468,11 +485,24 @@ function boot() {
                 } else if (this.pointerId === null) {
                     field.setPointerCapture(event.pointerId);
                     this.pointerId = event.pointerId;
+                    if (event.pointerType === 'touch') {
+                        this.touchStartX = event.clientX;
+                        this.touchPlayerX = this.player.x;
+                        this.touchTargetX = this.player.x;
+                    }
                 }
+            });
+            on(field, 'pointermove', (event) => {
+                if (event.pointerId !== this.pointerId || this.touchTargetX == null) return;
+                this.touchTargetX = Phaser.Math.Clamp(this.touchPlayerX + (event.clientX - this.touchStartX)
+                    * WIDTH / field.clientWidth, EDGE_MARGIN, WIDTH - EDGE_MARGIN);
             });
             for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) {
                 on(field, event, (pointer) => {
-                    if (this.pointerId === pointer.pointerId) this.pointerId = null;
+                    if (this.pointerId === pointer.pointerId) {
+                        this.pointerId = null;
+                        this.touchTargetX = null;
+                    }
                 });
             }
             for (const button of document.querySelectorAll('[data-store]')) {
@@ -493,7 +523,7 @@ function boot() {
             for (const [key, label] of [
                 ['coin', 'Tag coin +5'], ['coffee', 'Double points'],
                 ['fence', 'Jump fences'], ['sign', 'Duck signs'],
-                ['cone', 'Avoid cones'], ['tire', 'Avoid tires']
+                ['cone', 'Avoid cones'], ['tire', 'Avoid tires'], ['health', '+1 health']
             ]) {
                 const item = document.createElement('li');
                 const texture = this.textures.get(key);
@@ -515,6 +545,8 @@ function boot() {
 
         clearInput() {
             this.flightKeys.clear();
+            this.moveKeys.clear();
+            this.touchTargetX = null;
             this.spaceHeld = false;
             const field = byId('playfield');
             if (this.pointerId !== null && field.hasPointerCapture(this.pointerId)) field.releasePointerCapture(this.pointerId);
@@ -532,6 +564,13 @@ function boot() {
             this.effects = [];
             for (const shot of this.shots) shot.destroy();
             this.shots = [];
+            this.healthPickup?.destroy();
+            this.healthPickup = null;
+            this.nextHealth = HEALTH_MS;
+            this.hp = START_HP;
+            this.immuneUntil = 0;
+            this.hitPoseUntil = 0;
+            this.horizontalSpeed = 0;
             this.nextShot = 0;
             this.shotPoseUntil = 0;
             this.bossQueued = false;
@@ -555,7 +594,8 @@ function boot() {
             this.verticalSpeed = 0;
             this.nextExhaust = 0;
             this.idleLine = 0;
-            this.player.clearTint().setScale(0.5).setAngle(0).setPosition(START_X, FLOOR_Y);
+            this.player.anims.stop();
+            this.player.clearTint().setAlpha(1).setScale(0.5).setAngle(0).setPosition(START_X, FLOOR_Y);
             this.drawTaggy(false);
             this.banner.setVisible(false);
             this.resetSky();
@@ -603,11 +643,19 @@ function boot() {
         updateStats() {
             const score = byId('score');
             const level = byId('level');
+            const health = byId('health');
+            const label = 'Health ' + this.hp + ' of ' + MAX_HP;
+            if (health.getAttribute('aria-label') !== label) {
+                health.setAttribute('aria-label', label);
+                health.textContent = '♥'.repeat(this.hp) + '♡'.repeat(MAX_HP - this.hp);
+            }
             if (score.textContent !== String(this.score)) score.textContent = this.score;
             if (level.textContent !== String(this.level)) level.textContent = this.level;
             byId('shot-meter').value = Math.max(0, 1 - (this.nextShot - this.elapsed) / SHOT_MS);
             const remaining = Math.max(0, Math.ceil((this.coffeeUntil - this.elapsed) / 1000));
-            const effects = remaining ? 'Coffee ' + remaining + 's � x2' : '';
+            const coffee = remaining ? 'Coffee ' + remaining + 's x2' : '';
+            const protectedMotion = this.reducedMotion.matches && this.hp > 0 && this.elapsed < this.immuneUntil;
+            const effects = [coffee, protectedMotion ? 'Protected' : ''].filter(Boolean).join(' · ');
             const indicator = byId('effects');
             if (indicator.textContent !== effects) indicator.textContent = effects;
             indicator.hidden = !effects || this.state === STATES.GAME_OVER;
@@ -637,6 +685,7 @@ function boot() {
                 if (this.elapsed >= this.crashUntil) this.finish();
                 return;
             }
+            this.moveHorizontally(dt);
             this.fly(dt);
             const distance = scrollSpeed(this.scroll) * dt;
             this.scroll += distance;
@@ -667,6 +716,7 @@ function boot() {
                 this.spawnPattern(pattern, index);
                 this.nextPattern += pattern === BOSS ? 750 : 590;
             }
+            this.updateHealthPickup(distance);
             if (this.spaceHeld) this.fire();
             for (const segment of this.segments) {
                 segment.age += step;
@@ -711,15 +761,16 @@ function boot() {
             }
             const reduced = this.reducedMotion.matches;
             if (thrusting && !reduced && this.elapsed >= this.nextExhaust) {
-                this.addEffect(this.add.circle(START_X - 22, this.player.y + 32, 7, BRAND_RED), 180, -19);
+                this.addEffect(this.add.circle(this.player.x - 22, this.player.y + 32, 7, BRAND_RED), 180, -19);
                 this.nextExhaust = this.elapsed + 65;
             }
             const tilt = this.verticalSpeed / MAX_VERTICAL_SPEED * 9;
             this.player.setAngle(reduced ? 0 : this.player.angle + (tilt - this.player.angle) * (1 - Math.exp(-13 * dt)));
-            const squash = reduced ? 0 : Math.max(0, 1 - (this.elapsed - this.landedAt) / 145) * 0.13;
+            const squash = reduced || this.player.y < FLOOR_Y ? 0 : Math.max(0, 1 - (this.elapsed - this.landedAt) / 145) * 0.13;
             this.drawTaggy(thrusting);
             const scale = ['taggy-fly', 'taggy-shoot', 'taggy-hit'].includes(this.player.texture.key) ? 1 : 0.5;
-            this.player.setScale(scale * (1 + squash), scale * (1 - squash));
+            const landing = scale === 1 ? 0 : squash;
+            this.player.setScale(scale * (1 + landing), scale * (1 - landing));
         }
 
         resetSky() {
@@ -775,27 +826,32 @@ function boot() {
             }
             if (this.elapsed >= this.nextTrail) {
                 if (this.trailPoints.length === 6) this.trailPoints.shift();
-                this.trailPoints.push({ y: this.player.y, at: this.elapsed });
+                this.trailPoints.push({ x: this.player.x, y: this.player.y, at: this.elapsed });
                 this.nextTrail = this.elapsed + 22;
             }
             for (const point of this.trailPoints) {
                 const age = this.elapsed - point.at;
                 if (age >= 132) continue;
                 this.trail.fillStyle(0xff8b72, strength * 0.23 * (1 - age / 132))
-                    .fillRoundedRect(START_X - 48 - age * 0.44, point.y - 3, 25, 6, 3);
+                    .fillRoundedRect(point.x - 48 - age * 0.44, point.y - 3, 25, 6, 3);
             }
         }
 
         drawTaggy(thrusting) {
+            if (this.elapsed < this.hitPoseUntil) return;
             const airborne = this.player.y < FLOOR_Y;
             let key = airborne ? 'taggy-fly' : 'taggy-walk-right';
             if (this.elapsed < this.shotPoseUntil) key = 'taggy-shoot';
             if ((thrusting || airborne || key === 'taggy-shoot' || this.state === STATES.PLAYING)
                 && !this.reducedMotion.matches && this.anims.exists(key)) {
                 if (key !== 'taggy-shoot') this.player.play(key, true);
-            } else if (this.player.texture.key !== 'taggy-idle-right') {
-                this.player.anims.stop();
-                this.player.setTexture('taggy-idle-right', 0);
+            } else {
+                const pose = this.reducedMotion.matches && this.anims.exists(key) && key !== 'taggy-walk-right'
+                    ? key : 'taggy-idle-right';
+                if (this.player.texture.key !== pose) {
+                    this.player.anims.stop();
+                    this.player.setTexture(pose, 0);
+                }
             }
         }
 
@@ -803,10 +859,10 @@ function boot() {
             if (this.elapsed < this.nextShot || this.crashUntil) return;
             this.nextShot = this.elapsed + SHOT_MS;
             this.shotPoseUntil = this.elapsed + 3 * 1000 / 14;
-            if (this.anims.exists('taggy-shoot') && !this.reducedMotion.matches) {
+            if (this.elapsed >= this.hitPoseUntil && this.anims.exists('taggy-shoot') && !this.reducedMotion.matches) {
                 this.player.play('taggy-shoot').setScale(1);
             }
-            const shot = this.add.sprite(START_X + 29, this.player.y, 'bill-projectile', this.firstFrame('bill-projectile')).setDepth(4);
+            const shot = this.add.sprite(this.player.x + 29, this.player.y, 'bill-projectile', this.firstFrame('bill-projectile')).setDepth(4);
             if (!this.anims.exists('bill-projectile')) shot.setDisplaySize(40, 27);
             if (this.anims.exists('bill-projectile') && !this.reducedMotion.matches) shot.play('bill-projectile');
             this.shots.push(shot);
@@ -879,34 +935,35 @@ function boot() {
         checkPattern(segment) {
             const { view, hazard, pattern, coins } = segment;
             const y = this.player.y;
-            const dx = Math.abs(view.x - START_X);
+            const playerX = this.player.x;
+            const dx = Math.abs(view.x - playerX);
             const dy = Math.abs(hazard.y - y);
             // Use the opaque cap or base, with a small forgiving inset on each side.
             const halfWidth = pattern.width * (pattern.key === 'tire' ? 0.36 : 0.42);
             const halfHeight = pattern.height * (pattern.key === 'tire' ? 0.36 : 0.44);
             if (pattern.key === 'tire' && !this.reducedMotion.matches) hazard.rotation = this.scroll / 48;
             const alive = segment.hp !== 0;
-            if (segment.drops.some((drop) => Math.abs(drop.x - START_X) < PLAYER_HALF_WIDTH + 22
+            if (this.elapsed >= this.immuneUntil && (segment.drops.some((drop) => Math.abs(drop.x - playerX) < PLAYER_HALF_WIDTH + 22
                 && Math.abs(drop.y - y) < PLAYER_HALF_HEIGHT + 22)
-                || alive && dx < halfWidth + PLAYER_HALF_WIDTH && dy < halfHeight + PLAYER_HALF_HEIGHT) {
+                || alive && dx < halfWidth + PLAYER_HALF_WIDTH && dy < halfHeight + PLAYER_HALF_HEIGHT)) {
                 this.hitObstacle();
                 return;
             }
             if (alive && dx < halfWidth && dy < halfHeight + PLAYER_HALF_HEIGHT + 20) segment.near = true;
-            if (!segment.passed && view.x + halfWidth + PLAYER_HALF_WIDTH < START_X) {
+            if (!segment.passed && view.x + halfWidth + PLAYER_HALF_WIDTH < playerX) {
                 segment.passed = true;
                 if (alive && segment.near) {
                     this.addBonus(5);
-                    this.showFeedback('CLOSE! +5', START_X, y);
+                    this.showFeedback('CLOSE! +5', playerX, y);
                     this.speak('Whoa, tight one!');
                 }
             }
             for (const coin of coins) {
                 if (!coin.visible) continue;
                 const x = view.x + coin.x;
-                if (Math.abs(x - START_X) < PLAYER_HALF_WIDTH + 15 && Math.abs(coin.y - y) < PLAYER_HALF_HEIGHT + 15) {
+                if (Math.abs(x - playerX) < PLAYER_HALF_WIDTH + 15 && Math.abs(coin.y - y) < PLAYER_HALF_HEIGHT + 15) {
                     this.collectCoin(coin, x);
-                } else if (x < START_X - PLAYER_HALF_WIDTH - 15) {
+                } else if (x < EDGE_MARGIN - PLAYER_HALF_WIDTH - 15) {
                     coin.setVisible(false);
                     this.coinStreak = 0;
                 }
@@ -942,17 +999,74 @@ function boot() {
             track('pickup_collect', { type: coffee ? 'coffee' : 'score' });
         }
 
+        moveHorizontally(dt) {
+            const left = this.moveKeys.has('ArrowLeft') || this.moveKeys.has('KeyA');
+            const right = this.moveKeys.has('ArrowRight') || this.moveKeys.has('KeyD');
+            const target = this.touchTargetX != null
+                ? Phaser.Math.Clamp((this.touchTargetX - this.player.x) * 8, -MOVE_SPEED, MOVE_SPEED)
+                : left || right ? (Number(right) - Number(left)) * MOVE_SPEED
+                    : Phaser.Math.Clamp((START_X - this.player.x) * 1.8, -85, 85);
+            this.horizontalSpeed += (target - this.horizontalSpeed) * (1 - Math.exp(-12 * dt));
+            const x = this.player.x + this.horizontalSpeed * dt;
+            this.player.x = Phaser.Math.Clamp(x, EDGE_MARGIN, WIDTH - EDGE_MARGIN);
+            if (x !== this.player.x) this.horizontalSpeed = 0;
+        }
+
+        updateHealthPickup(distance) {
+            const bossPresent = this.bossQueued
+                || this.segments.some(({ pattern, hp, view }) => pattern === BOSS && hp > 0
+                    && view.x + pattern.width / 2 > EDGE_MARGIN);
+            if (bossPresent && this.healthPickup) {
+                this.healthPickup.destroy();
+                this.healthPickup = null;
+                this.nextHealth = this.elapsed;
+            }
+            if (!bossPresent && !this.healthPickup && this.elapsed >= this.nextHealth) {
+                this.healthPickup = this.add.image(WIDTH + 25, 445, 'health').setDepth(4);
+                this.nextHealth = this.elapsed + HEALTH_MS;
+            }
+            const pickup = this.healthPickup;
+            if (!pickup) return;
+            pickup.x -= distance;
+            const collected = Math.abs(pickup.x - this.player.x) < PLAYER_HALF_WIDTH + 17
+                && Math.abs(pickup.y - this.player.y) < PLAYER_HALF_HEIGHT + 17;
+            if (collected) {
+                const healed = this.hp < MAX_HP;
+                this.hp = Math.min(MAX_HP, this.hp + 1);
+                this.showFeedback(healed ? '+1 HP' : 'FULL HP', pickup.x, pickup.y);
+                this.playPickupSound('score');
+            }
+            if (collected || pickup.x < -30) {
+                pickup.destroy();
+                this.healthPickup = null;
+            }
+        }
+
         hitObstacle() {
+            if (this.crashUntil || this.elapsed < this.immuneUntil) return;
+            this.hp -= 1;
+            this.updateStats();
             this.playPickupSound('crash');
+            this.hitPoseUntil = this.elapsed + 250;
+            this.flashUntil = this.elapsed + 180;
+            this.immuneUntil = this.elapsed + IMMUNITY_MS;
+            this.shotPoseUntil = 0;
+            if (this.anims.exists('taggy-hit')) {
+                this.player.anims.stop();
+                this.player.setScale(1);
+                if (this.reducedMotion.matches) this.player.setTexture('taggy-hit', 0);
+                else this.player.play('taggy-hit');
+            }
+            if (!this.reducedMotion.matches) this.player.setTint(0xff8267);
+            if (this.hp > 0) {
+                this.speak('Still rolling.');
+                return;
+            }
             this.crashAt = this.elapsed;
             this.crashUntil = this.elapsed + CRASH_MS;
-            this.flashUntil = this.elapsed + 180;
             this.clearInput();
-            this.player.anims.pause();
-            if (this.anims.exists('taggy-hit') && !this.reducedMotion.matches) this.player.play('taggy-hit').setScale(1);
             if (!this.reducedMotion.matches) this.cameras.main.shake(145, 0.003);
             this.speak("Ouch... that's a tag!");
-            if (!this.reducedMotion.matches) this.player.setTint(0xff8267);
         }
 
         speak(line) {
@@ -1024,6 +1138,8 @@ function boot() {
                 }
             }
             if (this.elapsed >= this.flashUntil) this.player.clearTint();
+            const blinking = !this.crashUntil && this.elapsed < this.immuneUntil && !this.reducedMotion.matches;
+            this.player.setAlpha(blinking && Math.floor((this.elapsed - (this.immuneUntil - IMMUNITY_MS)) / 170) % 2 === 0 ? 0.4 : 1);
             this.effects = this.effects.filter(({ object, start, duration, rise, y }) => {
                 const progress = (this.elapsed - start) / duration;
                 if (progress >= 1) {

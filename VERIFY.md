@@ -149,3 +149,22 @@ Windows Edge 157, headless, on ThinkServer TS140 with Xeon E3-1246 v3 and GTX 75
 | Physical phone, laptop and audible sound | NOT TESTED | 360 px was emulated. The workstation profile does not establish mid-range laptop performance. Audio was not listened to. |
 
 Capture filenames: dawn-900.png, midday-900.png, sunset-900.png, dusk-900.png, night-900.png, the corresponding five -360 captures, boss-fight.png, and crash-shake.png. The raw frame summary is frame-times.json beside the captures.
+
+## Phase 9 verification
+
+Windows Edge 157 via DevTools Protocol, with the actual file URL at a 900 px desktop viewport and loopback HTTP at a 360 px emulated touch viewport.
+
+| Check | Result | Observed evidence |
+| --- | --- | --- |
+| Launch and fallback | PASS | File launch and cache-disabled reload reached Start with matching v=9. No console warnings or uncaught exceptions in the interaction suite. The temporary pre-strip bundle still enabled Start and used the procedural drone and legacy Taggy fallback. |
+| Keyboard movement | PASS | Left arrow reached x=54, then release drifted toward home x=150. D moved right to x=546. Desktop captures record motion and both edges. |
+| 360 px touch | PASS | A left-origin hold dragged across the midpoint and continued flying and steering. A simultaneous separate right touch fired a shot. No horizontal overflow, page scroll or zoom was observed. |
+| Health and pickup | PASS | Started at two HP. A repeated hit during the same 1.5-second protection window left one HP and the hit pose blinked. A queued boss deferred a due pickup. Collecting one gave +1 HP and repeated pickups capped at five. Reduced motion kept the player opaque and showed Protected. |
+| Game over and records | PASS | Zero HP reached game over, best score matched localStorage, and replay reset health and home position. |
+| Pose alignment | PASS | All nine fly, shoot and hit frames measured 36 logical px for the red tag body, centered at source row 63.5 of the normalized 128 px cell. Draw scale is 1.0 for all three strips. |
+| Maximum-speed patterns | PASS | 15,000 production advance calls at 8 ms each covered 120 simulated seconds at the 230 logical px/s cap, reaching level 14. The flight-only route cleared all ten pattern types with two HP remaining and health pickups disabled for the proof. Left/right movement gives extra positioning choice, and the existing flight-only route remains viable. |
+| Physical phone and audio by ear | NOT TESTED | Touch was emulated. |
+
+Source-to-output scale by frame in order: fly 0.176471 / 0.179104 / 0.175610 / 0.169811; shoot 0.145161 / 0.146939 / 0.147541; hit 0.059406 / 0.061224. Factors are uniform within each frame. The original PNGs and 42 × 50 player hitbox are unchanged. Hazard collisions and shot origins use Taggy's current x.
+
+Desktop and mobile captures and the measured pose comparison are in the Phase 9 screenshots folder. Captures cover left and right motion, both edges, 2 and 5 HP, damage blink, health pickup, game over, and 360 px touch.

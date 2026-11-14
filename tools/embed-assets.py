@@ -13,6 +13,7 @@ import zlib
 
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS = ROOT / "game_assets"
+TAG_BODY_HEIGHT = 36
 # Source size, frame count, normalized frame size, target opaque width.
 STRIPS = {
     "taggy-fly": (2172, 724, 4, 144, 128, 96),
@@ -69,20 +70,24 @@ def strip_png(path, geometry):
             anchor = ((min(body_x) + max(body_x)) / 2, (min(body_y) + max(body_y)) / 2)
         else:
             anchor = ((bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2)
-        frames.append((left, right, bounds, anchor))
+        body_height = max(body_y) - min(body_y) + 1 if body_y else bounds[3] - bounds[1] + 1
+        frames.append((left, right, bounds, anchor, body_height))
 
-    if path.stem == "taggy-hit":
-        scale = min(56 / max(b[3] - b[1] + 1 for _, _, b, _ in frames),
-                    target_w / max(b[2] - b[0] + 1 for _, _, b, _ in frames))
+    if taggy:
+        scales = [TAG_BODY_HEIGHT / frame[4] for frame in frames]
+        print(f"{path.stem}: " + ", ".join(f"{scale:.6f}" for scale in scales))
     else:
-        scale = target_w / max(b[2] - b[0] + 1 for _, _, b, _ in frames)
-    for _, _, (x0, y0, x1, y1), (ax, ay) in frames:
-        scale = min(scale, (frame_w / 2 - 2) / max(ax - x0, x1 - ax, 1),
-                    (frame_h / 2 - 2) / max(ay - y0, y1 - ay, 1))
+        scale = target_w / max(b[2] - b[0] + 1 for _, _, b, _, _ in frames)
+        for _, _, (x0, y0, x1, y1), (ax, ay), _ in frames:
+            scale = min(scale, (frame_w / 2 - 2) / max(ax - x0, x1 - ax, 1),
+                        (frame_h / 2 - 2) / max(ay - y0, y1 - ay, 1))
+        scales = [scale] * count
 
     sheet_w = count * frame_w
     sheet = bytearray(sheet_w * frame_h * 4)
-    for i, (left, right, _, (ax, ay)) in enumerate(frames):
+    for i, ((left, right, (x0, y0, x1, y1), (ax, ay), _), scale) in enumerate(zip(frames, scales)):
+        if max(ax - x0, x1 - ax) * scale >= frame_w / 2 or max(ay - y0, y1 - ay) * scale >= frame_h / 2:
+            raise ValueError(f"{path.name}: frame {i + 1} exceeds its normalized cell")
         for y in range(frame_h):
             sy = round(ay + (y + 0.5 - frame_h / 2) / scale)
             if not 0 <= sy < height:

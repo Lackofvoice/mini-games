@@ -6,8 +6,8 @@
   <title>RV Dash</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@1,900&display=swap">
   <script defer src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
-  <script defer src="game_assets/embedded-assets.js?v=8"></script>
-  <script defer src="game.js?v=8"></script>
+  <script defer src="game_assets/embedded-assets.js?v=9"></script>
+  <script defer src="game.js?v=9"></script>
   <style>
     :root { --red: #dc2626; --black: #111111; --panel: #222222; --white: #ffffff; }
     * { box-sizing: border-box; }
@@ -20,6 +20,7 @@
     .brand { font-weight: 800; color: var(--white); }
     .stats > span { display: grid; gap: 2px; min-width: 42px; color: #dddde5; font-size: .7rem; font-weight: 750; }
     .stats strong { border-bottom: 2px solid var(--red); color: var(--white); font-size: 1.125rem; line-height: 1.05; }
+    #health { color: #ff6b6b; letter-spacing: .1em; min-width: 75px; }
     .bar, .stores { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
     .bar { justify-content: space-between; margin: 12px 0 8px; min-height: 46px; }
     .stats { display: flex; flex-wrap: wrap; gap: 8px 16px; font-variant-numeric: tabular-nums; }
@@ -64,22 +65,22 @@
     <div class="brand">Price Right RV</div>
     <h1>RV Dash</h1>
     <div id="intro">
-      <p id="flight-help">Fly with Up, W, or mouse hold. Shoot with Space. On touch, hold left to fly and tap right to shoot.</p>
+      <p id="flight-help">Fly with Up, W, or mouse hold. Shoot with Space. Move with Left/Right or A/D. On touch, hold and drag on the left to fly and steer. Tap right to shoot.</p>
       <p id="motion-note">Reduced motion: calmer scenery.</p>
       <ul id="legend" aria-label="Track items"></ul>
     </div>
     <div class="bar">
-      <div class="stats"><span>Score <strong id="score">0</strong></span><span>Level <strong id="level">1</strong></span></div>
+      <div class="stats"><span>Score <strong id="score">0</strong></span><span>Level <strong id="level">1</strong></span><span>Health <strong id="health" role="img" aria-label="Health 2 of 5">♥♥♡♡♡</strong></span></div>
       <button id="start" class="primary" disabled>Start game</button>
       <button id="pause" aria-label="Pause or resume (P or Escape)" hidden>Pause</button>
       <label id="shot-status" hidden>Shot <progress id="shot-meter" aria-label="Shot readiness" max="1" value="1"></progress></label>
       <button id="sound" aria-pressed="false" disabled>Sound off</button>
     </div>
-    <p id="flight-hint" hidden>Up or W to fly. Space to shoot. Touch left to fly, right to shoot.</p>
+    <p id="flight-hint" hidden>Up or W to fly. A/D or arrows to steer. Space to shoot. Touch left to fly and drag, right to shoot.</p>
     <p id="effects" hidden></p>
     <p id="status" role="status">Loading game…</p>
     <div id="game-area">
-      <div id="playfield" tabindex="-1" role="group" aria-label="Taggy flight course. Hold Up, W, mouse, or the left touch half to rise. Shoot with Space or tap the right touch half. Pause with P or Escape.">
+      <div id="playfield" tabindex="-1" role="group" aria-label="Taggy flight course. Hold Up, W, mouse, or the left touch half to rise. Steer with Left/Right, A/D, or by dragging the left touch. Shoot with Space or tap the right touch half. Pause with P or Escape.">
         <p id="speech" hidden></p>
       </div>
     </div>
