@@ -155,3 +155,15 @@ main { margin-top: max(10px, env(safe-area-inset-top)); }
   .utility { gap: 3px; }
   .utility button { padding-inline: 6px; }
 }
+
+#boss-hud {
+  position: absolute; z-index: 2; inset: 8px 8px auto;
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 3px 6px;
+  padding: 6px 9px; background: var(--surface-recessed); border: var(--stroke);
+  font: 800 clamp(.66rem, 2.75vw, .86rem)/1.25 var(--body);
+  pointer-events: none;
+}
+#boss-hud progress { grid-column: 1 / -1; width: 100%; height: 10px; accent-color: var(--pink); }
+#test-mode { color: #fff0a5; grid-column: 2; grid-row: 1; }
+#boss-note { grid-column: 1 / -1; color: #abf5ff; }
+#arena-jump { position: absolute; z-index: 3; right: 8px; top: 76px; min-height: 44px; touch-action: none; }

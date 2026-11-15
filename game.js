@@ -63,7 +63,6 @@ const ENEMIES = [
     { key: 'bird', y: 300, width: 60, height: 35, lane: 'high', hp: 1 },
     { key: 'cart', y: 609, width: 85, height: 52, lane: 'low', hp: 2 }
 ];
-const BOSS = { key: 'boss-sold', y: 290, width: 204, height: 214, lane: 'high', hp: 10 };
 const SPRITES = {
     'taggy-idle-right': ['game_assets/taggy/taggy_idle.png', 160, 144, 1, 0],
     'taggy-walk-right': ['game_assets/taggy/taggy_walk.png', 160, 144, 4, 7.14],
@@ -77,7 +76,6 @@ const SPRITES = {
     'drone': ['assets/sprites/drone.png', 96, 96, 4, 12],
     'bird': ['assets/sprites/bird.png', 96, 96, 4, 10],
     'cart': ['assets/sprites/cart.png', 120, 100, 4, 12],
-    'boss-sold': ['assets/sprites/boss-sold.png', 272, 272, 4, 6],
     'bill-projectile': ['assets/sprites/bill-projectile.png', 52, 52, 4, 16],
     'coin': ['assets/sprites/coin.png', 48, 48, 6, 10],
     'pop-fx': ['assets/sprites/pop-fx.png', 96, 96, 5, 18]
@@ -89,7 +87,7 @@ const PLAYER_HALF_HEIGHT = 25;
 const BEST_KEY = 'rv-dash-best-v3';
 const COIN_POINTS = 5;
 // Spacing leaves time to travel floor-to-ceiling even at maximum speed.
-const SPAWN_TIMING = { boss: 750, enemy: 590, first: 385, reaction: 1.5, minimumReaction: 1.2 };
+const SPAWN_TIMING = { enemy: 590, first: 385, reaction: 1.5, minimumReaction: 1.2 };
 const ROAD_PATTERNS = [
     { level: 1, items: [['cone', 0, 0], ['cone', 0, 62], ['cone', 0, 124]] },
     { level: 1, items: [['pothole', 0, 0]] },
@@ -141,7 +139,10 @@ const STATES = Object.freeze({
 const byId = (id) => document.getElementById(id);
 let viewTracked = false;
 
+const BOSS_DEBUG_LEVEL = bossDebugLevel(location.search);
+
 function track(event, details = {}) {
+    if (BOSS_DEBUG_LEVEL) return;
     const payload = { game_name: 'RV Dash', ...details };
     try {
         if (typeof window.gtag === 'function') {
@@ -298,18 +299,6 @@ function makeTextures(scene) {
         for (const x of [31, 48, 65, 82]) box(0xbfb9b4, x, 19, 10, 29, 3);
         circle(0xa6a1a0, 33, 62, 12);
         circle(0xa6a1a0, 86, 62, 12);
-    });
-    texture('boss-sold', 160, 120, () => {
-        box(0xa11d1d, 10, 31, 140, 84, 15);
-        box(0x6b3d3c, 60, 4, 40, 37, 12);
-        box(0xfff4de, 19, 53, 122, 43, 9);
-        const letters = [
-            ['111','100','111','001','111'], ['111','101','101','101','111'],
-            ['100','100','100','100','111'], ['110','101','101','101','110']
-        ];
-        letters.forEach((letter, i) => letter.forEach((row, y) => [...row].forEach((pixel, x) => {
-            if (pixel === '1') rect(BRAND_RED, 35 + i * 24 + x * 5, 61 + y * 5, 5, 5);
-        })));
     });
     texture('bill-projectile', 48, 32, () => {
         box(0xfff4de, 2, 4, 44, 24, 6);
@@ -479,6 +468,7 @@ function boot() {
             if (window.RV_ROAD_SHEET) this.load.image(ROAD_SHEET, window.RV_ROAD_SHEET);
             for (const art of window.RV_OBSTACLES || []) this.load.image('obstacle-' + art.key, art.data);
             const assets = window.RV_DASH_EMBEDDED || {};
+            loadBossSheets(this, assets);
             this.loadFailures = new Set();
             const fail = (key) => {
                 this.loadFailures.add(key);
@@ -520,6 +510,12 @@ function boot() {
             this.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
             makeTextures(this);
             registerOptionalFrames(this);
+            this.bossSheets = new Set(BOSS_DEFINITIONS.map(({id}) => 'boss-' + id)
+                .filter(key => validateBossSheet(this, key)));
+            this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.clearArena());
+            byId('test-mode').hidden = !BOSS_DEBUG_LEVEL;
+            byId('view-scores-start').hidden = Boolean(BOSS_DEBUG_LEVEL);
+            byId('view-scores-result').hidden = Boolean(BOSS_DEBUG_LEVEL);
             if (this.textures.exists(ROAD_SHEET)) {
                 const sheet = this.textures.get(ROAD_SHEET);
                 const image = sheet.getSourceImage();
@@ -561,8 +557,8 @@ function boot() {
             this.playerShadow = this.add.ellipse(START_X, FLOOR_Y + 28, 61, 15, 0x13131c, .42).setDepth(2.7);
             this.player = this.add.sprite(START_X, FLOOR_Y, 'taggy-idle-right', 0).setScale(0.5).setDepth(5);
             this.muted = true;
-            this.leaderboard = window.RVLeaderboard.attach('rv-dash');
-            this.leaderboard.ready();
+            this.leaderboard = BOSS_DEBUG_LEVEL ? null : window.RVLeaderboard.attach('rv-dash');
+            this.leaderboard?.ready();
             this.best = readBest();
             byId('page-best').textContent = this.best.score;
             this.segments = [];
@@ -614,6 +610,12 @@ function boot() {
                 updateAutoFire();
                 try { localStorage.setItem(AUTO_FIRE_KEY, String(this.autoFire)); } catch {}
                 if (this.state === STATES.PLAYING) byId('playfield').focus({ preventScroll: true });
+            });
+            on(byId('arena-jump'), 'click', () => {
+                if (!this.arena?.active || this.state !== STATES.PLAYING || this.crashUntil) return;
+                this.jumpBufferedUntil = this.elapsed + JUMP_BUFFER_MS;
+                this.tryJump();
+                byId('playfield').focus({preventScroll: true});
             });
             on(byId('start'), 'click', () => this.start());
             on(byId('replay'), 'click', () => this.start());
@@ -795,10 +797,10 @@ function boot() {
 
         start() {
             if (this.state !== STATES.AWAITING_START && this.state !== STATES.GAME_OVER) return;
-            this.leaderboard.start();
+            this.leaderboard?.start();
+            this.clearArena();
             for (const segment of this.segments) {
                 segment.view.destroy();
-                for (const drop of segment.drops) drop.destroy();
             }
             for (const effect of this.effects) effect.object.destroy();
             this.segments = [];
@@ -814,21 +816,22 @@ function boot() {
             this.horizontalSpeed = 0;
             this.nextShot = 0;
             this.shotPoseUntil = 0;
-            this.bossQueued = false;
+            this.resumeAt = -Infinity;
+            this.roadElapsed = 0;
             this.enemyIndex = 0;
             this.acceleration = GRAVITY;
             this.landedAt = -1000;
             this.jumpGroundedAt = 0;
             this.score = 0;
-            this.level = 1;
+            this.level = BOSS_DEBUG_LEVEL || 1;
             this.bonus = 0;
             this.coinStreak = 0;
             this.newBest = false;
             this.elapsed = 0;
-            this.scroll = 0;
+            this.scroll = (this.level - 1) * LEVEL_DISTANCE;
             this.layerOffsets = {};
             this.layerLevel = 0;
-            this.nextPattern = SPAWN_TIMING.first;
+            this.nextPattern = this.scroll + SPAWN_TIMING.first;
             this.patternLevel = 0;
             this.puddleUntil = 0;
             this.patternIndex = 0;
@@ -855,6 +858,7 @@ function boot() {
             this.drawRoadPosition();
             this.selectStore(null);
             this.setRoundState(STATES.PLAYING);
+            this.enterArena();
             this.speak("Price Right. Let's roll.");
             this.updateStats();
             byId('playfield').focus({ preventScroll: true });
@@ -888,6 +892,7 @@ function boot() {
             byId('status').textContent = this.state === PAUSED ? 'Run paused. Select Resume to continue.' : '';
             byId('result').hidden = this.state !== GAME_OVER;
             byId('replay').hidden = this.state !== GAME_OVER;
+            byId('arena-jump').hidden = this.state !== PLAYING || this.arena?.mode !== 'fight';
         }
 
         updateStats() {
@@ -923,13 +928,36 @@ function boot() {
             if (this.state !== STATES.PLAYING) return;
             this.drawScenery();
             this.drawSpeedFX();
+            this.arena?.paint();
             this.drawRoadPosition();
             this.updateStats();
             this.updateEffects();
             this.updateSpeech();
         }
 
+        enterArena() {
+            for (const {view} of this.segments) view.destroy();
+            this.segments = [];
+            for (const shot of this.shots) shot.destroy();
+            this.shots = [];
+            if (this.healthPickup) {
+                this.healthPickup.destroy();
+                this.healthPickup = null;
+                this.nextHealth = this.roadElapsed;
+            }
+            this.banner.setVisible(false);
+            this.arena = new BossArena(this, this.level);
+            this.player.x = Math.min(this.player.x, BOSS_TUNING.playerRight);
+            this.trailPoints.length = 0;
+        }
+
+        clearArena() {
+            this.arena?.destroy();
+            this.arena = null;
+        }
+
         advance(step) {
+            if (this.state !== STATES.PLAYING) return;
             this.elapsed += step;
             const dt = step / 1000;
             if (this.crashUntil) {
@@ -939,17 +967,35 @@ function boot() {
             this.moveHorizontally(dt);
             this.moveRoadDepth(dt);
             this.fly(dt);
-            const distance = scrollSpeed(this.scroll) * dt;
+            if (this.arena) {
+                const arena = this.arena;
+                if (arena.mode === 'intro') {
+                    const coast = this.reducedMotion.matches ? 0 : Math.max(0, 1 - arena.age / BOSS_TUNING.stop);
+                    this.advanceScenery(scrollSpeed(this.scroll) * dt * coast, dt);
+                }
+                if (arena.step(step)) {
+                    this.clearArena();
+                    this.resumeAt = this.elapsed;
+                    this.nextPattern = this.scroll + SPAWN_TIMING.first;
+                    this.banner.setText('LEVEL ' + this.level).setAlpha(1).setVisible(true);
+                    this.bannerUntil = this.elapsed + 1100;
+                } else if (!this.crashUntil) {
+                    if (this.autoFire || this.shootHeld) this.fire();
+                    this.updateShots(dt);
+                }
+                return;
+            }
+            this.roadElapsed += step;
+            const ease = this.reducedMotion.matches ? 1 : Math.min(1, (this.elapsed - this.resumeAt) / BOSS_TUNING.resume);
+            const boundary = this.level * LEVEL_DISTANCE;
+            const distance = Math.min(boundary - this.scroll, scrollSpeed(this.scroll) * dt * ease);
             this.scroll += distance;
             this.advanceScenery(distance, dt);
             this.score = Math.floor(this.scroll / 20) + this.bonus;
-            const level = 1 + Math.floor(this.scroll / LEVEL_DISTANCE);
-            if (level > this.level) {
-                this.level = level;
-                if (level % 5 === 0) this.bossQueued = true;
-                this.banner.setText('LEVEL ' + level).setAlpha(1).setVisible(true);
-                this.bannerUntil = this.elapsed + 1100;
-                this.speak('Level ' + level + '. Faster now.');
+            if (this.scroll >= boundary) {
+                this.level++;
+                this.enterArena();
+                return;
             }
             if (!this.newBest && this.best.score > 0 && this.score > this.best.score) {
                 this.newBest = true;
@@ -957,11 +1003,7 @@ function boot() {
             }
             if (this.scroll >= this.nextPattern) {
                 const index = this.patternIndex++;
-                if (this.bossQueued) {
-                    this.bossQueued = false;
-                    this.spawnPattern(BOSS, index);
-                    this.nextPattern += SPAWN_TIMING.boss;
-                } else if (this.level > 1 && this.elapsed >= 20000 && index % 2 === 1) {
+                if (this.level > 1 && this.roadElapsed >= 20000 && index % 2 === 1) {
                     this.spawnPattern(ENEMIES[this.enemyIndex++ % ENEMIES.length], index);
                     this.nextPattern += SPAWN_TIMING.enemy;
                 } else {
@@ -972,31 +1014,22 @@ function boot() {
             if (this.autoFire || this.shootHeld) this.fire();
             for (const segment of this.segments) {
                 segment.age += step;
-                segment.view.x -= distance * (segment.pattern === BOSS ? 0.78 : 1);
+                segment.view.x -= distance;
                 const key = segment.pattern.key;
-                const wave = key === 'bird' ? Math.sin(segment.age / 530) * 52
-                    : key === 'boss-sold' ? Math.sin(segment.age / 1100) * 86 : 0;
+                const wave = key === 'bird' ? Math.sin(segment.age / 530) * 52 : 0;
                 segment.hazard.y = segment.hanging ? 0 : segment.pattern.y + wave;
                 if (segment.hanging && !this.reducedMotion.matches) {
                     segment.hazard.rotation = Math.sin(segment.age / 570) * .055;
                 }
-                if (segment.hp > 0 && segment.pattern === BOSS && segment.age >= segment.nextDrop
-                    && segment.view.x > START_X + 115) {
-                    segment.nextDrop += 1550;
-                    const drop = this.add.image(segment.view.x, 592, 'tire').setDisplaySize(58, 58).setDepth(3);
-                    segment.drops.push(drop);
-                }
-                for (const drop of segment.drops) drop.x -= distance * 0.64;
             }
             this.updateShots(dt);
             for (const segment of this.segments) {
                 this.checkPattern(segment);
                 if (this.crashUntil) break;
             }
-            this.segments = this.segments.filter(({ view, drops }) => {
-                if (view.x >= -200 || drops.some((drop) => drop.x > -40)) return true;
+            this.segments = this.segments.filter(({ view }) => {
+                if (view.x >= -200) return true;
                 view.destroy();
-                for (const drop of drops) drop.destroy();
                 return false;
             });
         }
@@ -1035,10 +1068,10 @@ function boot() {
 
         fly(dt) {
             const airborne = this.player.y < this.roadDepth || this.verticalSpeed < 0;
-            const thrusting = !this.touchDepthDirection && this.pointerId !== null
+            const thrusting = !this.arena && (!this.touchDepthDirection && this.pointerId !== null
                 && (this.touchTargetX == null || this.elapsed >= this.touchLiftAt)
                 || this.jumpHeld && airborne && this.elapsed - this.jumpStarted >= FLIGHT_HOLD_MS
-                || this.elapsed < this.coffeeLiftUntil;
+                || this.elapsed < this.coffeeLiftUntil);
             if (!airborne) this.jumpGroundedAt = this.elapsed;
             const assist = airborne && this.downHeld && !thrusting;
             const target = GRAVITY - (thrusting ? THRUST : 0) + (assist ? DESCENT_BONUS : 0);
@@ -1150,7 +1183,7 @@ function boot() {
         drawSpeedFX() {
             this.streaks.clear();
             this.trail.clear();
-            if (this.reducedMotion.matches || this.crashUntil) {
+            if (this.reducedMotion.matches || this.crashUntil || this.arena) {
                 this.trailPoints.length = 0;
                 return;
             }
@@ -1211,6 +1244,10 @@ function boot() {
             this.shots = this.shots.filter((shot) => {
                 shot.x += SHOT_SPEED * dt;
                 if (!this.reducedMotion.matches) shot.rotation += 6 * dt;
+                if (this.arena?.hit(shot)) {
+                    shot.destroy();
+                    return false;
+                }
                 const enemy = this.segments.find(({ view, hazard, pattern, hp }) => hp > 0
                     && Math.abs(shot.x - view.x) < pattern.width * 0.42 + 9
                     && Math.abs(shot.y - hazard.y) < pattern.height * 0.42 + 6);
@@ -1233,15 +1270,13 @@ function boot() {
                         .setDisplaySize(sprite.displayWidth, sprite.displayHeight).setTintFill(0xffffff);
                     this.addEffect(flash, 55, 0);
                 }
-                const boss = enemy.pattern === BOSS;
-                if (boss && !this.reducedMotion.matches) this.cameras.main.shake(180, 0.0028);
-                const points = boss ? 250 : 25;
+                const points = 25;
                 this.addBonus(points);
                 const pop = this.add.sprite(enemy.view.x, enemy.hazard.y, 'pop-fx', this.firstFrame('pop-fx'));
                 if (this.anims.exists('pop-fx') && !this.reducedMotion.matches) pop.play('pop-fx');
                 this.addEffect(pop, 5 * 1000 / 18, 0);
                 this.showFeedback('+' + points, enemy.view.x, enemy.hazard.y);
-                this.speak(boss ? 'Stamp returned to sender.' : 'That clears the lane.');
+                this.speak('That clears the lane.');
                 this.playPickupSound('score');
                 return false;
             });
@@ -1319,7 +1354,7 @@ function boot() {
                 for (const coin of coins) if (coin.texture.key === 'coin') coin.play('coin');
             }
             view.add(coins);
-            this.segments.push({ view, hazard, coins, pattern, hanging: hanging ? art : null, hp: pattern.hp, age: 0, drops: [], nextDrop: 900, near: false, passed: false });
+            this.segments.push({ view, hazard, coins, pattern, hanging: hanging ? art : null, hp: pattern.hp, age: 0, near: false, passed: false });
         }
 
         checkPattern(segment) {
@@ -1350,9 +1385,7 @@ function boot() {
                     segment.slowed = true;
                     this.puddleUntil = this.elapsed + 650;
                 }
-            } else if (this.elapsed >= this.immuneUntil && (impact || segment.drops.some((drop) =>
-                Math.abs(drop.x - playerX) < PLAYER_HALF_WIDTH + 22
-                && Math.abs(drop.y - y) < PLAYER_HALF_HEIGHT + 22))) {
+            } else if (this.elapsed >= this.immuneUntil && impact) {
                 segment.near = false;
                 this.hitObstacle();
                 return;
@@ -1428,22 +1461,14 @@ function boot() {
                 this.horizontalSpeed = 0;
             }
             const x = this.player.x + travel;
-            this.player.x = Phaser.Math.Clamp(x, EDGE_MARGIN, WIDTH - EDGE_MARGIN);
+            this.player.x = Phaser.Math.Clamp(x, EDGE_MARGIN, this.arena ? BOSS_TUNING.playerRight : WIDTH - EDGE_MARGIN);
             if (x !== this.player.x) this.horizontalSpeed = 0;
         }
 
         updateHealthPickup(distance) {
-            const bossPresent = this.bossQueued
-                || this.segments.some(({ pattern, hp, view }) => pattern === BOSS && hp > 0
-                    && view.x + pattern.width / 2 > EDGE_MARGIN);
-            if (bossPresent && this.healthPickup) {
-                this.healthPickup.destroy();
-                this.healthPickup = null;
-                this.nextHealth = this.elapsed;
-            }
-            if (!bossPresent && !this.healthPickup && this.elapsed >= this.nextHealth) {
+            if (!this.healthPickup && this.roadElapsed >= this.nextHealth) {
                 this.healthPickup = this.add.image(WIDTH + 25, 445, 'health').setDepth(4);
-                this.nextHealth = this.elapsed + HEALTH_MS;
+                this.nextHealth = this.roadElapsed + HEALTH_MS;
             }
             const pickup = this.healthPickup;
             if (!pickup) return;
@@ -1482,6 +1507,7 @@ function boot() {
                 this.speak('Still rolling.');
                 return;
             }
+            this.clearArena();
             this.crashAt = this.elapsed;
             this.crashUntil = this.elapsed + CRASH_MS;
             this.clearInput();
@@ -1590,12 +1616,12 @@ function boot() {
 
         finish() {
             this.finishedRuns += 1;
-            const record = this.score > this.best.score;
-            this.best = { score: Math.max(this.best.score, this.score), level: Math.max(this.best.level, this.level) };
-            try {
-                localStorage.setItem(BEST_KEY, JSON.stringify(this.best));
-            } catch {
-                // Keep the session best even when storage is blocked.
+            const record = !BOSS_DEBUG_LEVEL && this.score > this.best.score;
+            if (!BOSS_DEBUG_LEVEL) {
+                this.best = { score: Math.max(this.best.score, this.score), level: Math.max(this.best.level, this.level) };
+                try { localStorage.setItem(BEST_KEY, JSON.stringify(this.best)); } catch {
+                    // Keep the session best even when storage is blocked.
+                }
             }
             byId('final-score').textContent = 'Score ' + this.score + ' · Level ' + this.level;
             byId('page-best').textContent = this.best.score;
@@ -1605,7 +1631,7 @@ function boot() {
             byId('effects').hidden = true;
             byId('speech').hidden = true;
             byId('replay').focus({ preventScroll: true });
-            this.leaderboard.finish(this.score);
+            this.leaderboard?.finish(this.score);
             track('game_complete', {
                 result: 'crash', score: this.score, level: this.level,
                 duration_seconds: Math.round(this.crashAt / 1000)

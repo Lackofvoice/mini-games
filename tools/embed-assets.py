@@ -22,7 +22,6 @@ STRIPS = {
     "drone": (2172, 724, 4, 96, 96, 72),
     "bird": (2172, 724, 4, 96, 96, 72),
     "cart": (2172, 724, 4, 120, 100, 96),
-    "boss-sold": (2172, 724, 4, 272, 272, 240),
     "bill-projectile": (2172, 724, 4, 52, 52, 40),
     "coin": (2172, 724, 6, 48, 48, 36),
     "pop-fx": (2172, 724, 5, 96, 96, 80),
@@ -124,6 +123,8 @@ for key, dimensions in {
     "foliage-set": (512, 256),
     "overhead-hazard": (512, 128),
     "lot-life": (512, 256),
+    **{f"boss-{name}": (1024, 256)
+       for name in ("lowballer", "tirekicker", "greeter", "warranty", "invoice", "merger")},
 }.items():
     path = ROOT / "assets" / "sprites" / (key + ".png")
     if not path.is_file():
