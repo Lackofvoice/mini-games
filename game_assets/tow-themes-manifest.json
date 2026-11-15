@@ -1,0 +1,443 @@
+[
+  {
+    "theme": "nostalgiawave",
+    "originals": [
+      {
+        "frame": 1,
+        "path": "assets/rvdash-tow-part1of3/tow/nostalgiawave-tow-1.png",
+        "width": 1672,
+        "height": 941,
+        "bit_depth": 8,
+        "png_color_type": 2,
+        "bytes": 1824199,
+        "sha256": "f218e858b4b67c3be0b8244989d5766ff3605c4a12379a0471df6ca1e1360fdd"
+      },
+      {
+        "frame": 2,
+        "path": "assets/rvdash-tow-part1of3/tow/nostalgiawave-tow-2.png",
+        "width": 1672,
+        "height": 941,
+        "bit_depth": 8,
+        "png_color_type": 2,
+        "bytes": 1841536,
+        "sha256": "89601443d137f76f7aba3c532eb208ebd7cc85a78f907cea4383a7123618a788"
+      },
+      {
+        "frame": 3,
+        "path": "assets/rvdash-tow-part1of3/tow/nostalgiawave-tow-3.png",
+        "width": 1672,
+        "height": 941,
+        "bit_depth": 8,
+        "png_color_type": 2,
+        "bytes": 1848989,
+        "sha256": "69e8b1feac231b4f972fa969e842d4d518a11adaa740a0ec3bec0fabd0eeda80"
+      }
+    ],
+    "derivative": {
+      "source_frame": 1,
+      "crop": [
+        0,
+        0,
+        1672,
+        630
+      ],
+      "width": 540,
+      "height": 387,
+      "content_height": 203,
+      "bytes": 150166,
+      "sha256": "d0d09c64ce43f73df70c0866c2c2e05b40a0f637730f0032b58af3f74c05e280"
+    }
+  },
+  {
+    "theme": "dreamwave",
+    "originals": [
+      {
+        "frame": 1,
+        "path": "assets/rvdash-tow-part1of3/tow/dreamwave-tow-1.png",
+        "width": 1672,
+        "height": 941,
+        "bit_depth": 8,
+        "png_color_type": 2,
+        "bytes": 1603798,
+        "sha256": "c3a4cca7bcd9a2557c885ea17d311c8362026fe4fc56e12cce0dcb14b29baf3b"
+      },
+      {
+        "frame": 2,
+        "path": "assets/rvdash-tow-part1of3/tow/dreamwave-tow-2.png",
+        "width": 1672,
+        "height": 941,
+        "bit_depth": 8,
+        "png_color_type": 2,
+        "bytes": 1675228,
+        "sha256": "b7444896858b8e09a74037714039f63ad383b944c432173e931b3122ee16db73"
+      },
+      {
+        "frame": 3,
+        "path": "assets/rvdash-tow-part1of3/tow/dreamwave-tow-3.png",
+        "width": 1672,
+        "height": 941,
+        "bit_depth": 8,
+        "png_color_type": 2,
+        "bytes": 1676972,
+        "sha256": "768c1a652df678dd0dc2a420321f7f3206223ed08227e6e73eb716fed462f233"
+      }
+    ],
+    "derivative": {
+      "source_frame": 1,
+      "crop": [
+        0,
+        0,
+        1672,
+        715
+      ],
+      "width": 540,
+      "height": 387,
+      "content_height": 231,
+      "bytes": 172503,
+      "sha256": "c1dabb3283e5edd4b695a0124904a1cd973ca4d3a1ceffdd8bac16d9d1c4550a"
+    }
+  },
+  {
+    "theme": "outrun",
+    "originals": [
+      {
+        "frame": 1,
+        "path": "assets/rvdash-tow-part2of3/tow/outrun-tow-1.png",
+        "width": 1672,
+        "height": 941,
+        "bit_depth": 8,
+        "png_color_type": 2,
+        "bytes": 1767908,
+        "sha256": "3d7ca7f34bd6380319bac97a58f94c3c8d068e29f3ce97844cb6842287ac9844"
+      },
+      {
+        "frame": 2,
+        "path": "assets/rvdash-tow-part2of3/tow/outrun-tow-2.png",
+        "width": 1672,
+        "height": 941,
+        "bit_depth": 8,
+        "png_color_type": 2,
+        "bytes": 1815300,
+        "sha256": "e2ffa98902442a2cb7d4409dffe030dee6a637cda6438d4ddea87615eee81340"
+      },
+      {
+        "frame": 3,
+        "path": "assets/rvdash-tow-part2of3/tow/outrun-tow-3.png",
+        "width": 1672,
+        "height": 941,
+        "bit_depth": 8,
+        "png_color_type": 2,
+        "bytes": 1839439,
+        "sha256": "41fa13f49dbfefcd9d6212d62db5675c2d59d54291da8fd9dc46fc9c7c580b91"
+      }
+    ],
+    "derivative": {
+      "source_frame": 1,
+      "crop": [
+        0,
+        0,
+        1672,
+        621
+      ],
+      "width": 540,
+      "height": 387,
+      "content_height": 201,
+      "bytes": 184233,
+      "sha256": "7976828bf788c4d6051d61a14a4559ce3c1d08931d95fa227d2d59108a4b129f"
+    }
+  },
+  {
+    "theme": "rad",
+    "originals": [
+      {
+        "frame": 1,
+        "path": "assets/rvdash-tow-part3of3/tow/rad-tow-1.png",
+        "width": 1672,
+        "height": 941,
+        "bit_depth": 8,
+        "png_color_type": 2,
+        "bytes": 1563845,
+        "sha256": "cc9c208c9e7b4c52ce26e00d31d3998f212a5dc4606daaaaeabe5ffa82b6decf"
+      },
+      {
+        "frame": 2,
+        "path": "assets/rvdash-tow-part3of3/tow/rad-tow-2.png",
+        "width": 1672,
+        "height": 941,
+        "bit_depth": 8,
+        "png_color_type": 2,
+        "bytes": 1654479,
+        "sha256": "ba785352f21450c6848ac63a9570d93d619e5f0148ba6baff8113240d32533e3"
+      },
+      {
+        "frame": 3,
+        "path": "assets/rvdash-tow-part3of3/tow/rad-tow-3.png",
+        "width": 1672,
+        "height": 941,
+        "bit_depth": 8,
+        "png_color_type": 2,
+        "bytes": 1660125,
+        "sha256": "199c74bea6f2003e1aab5ce94b289d1c9a3adf4720040db0bcef9d09a62aaf34"
+      }
+    ],
+    "derivative": {
+      "source_frame": 1,
+      "crop": [
+        0,
+        0,
+        1672,
+        574
+      ],
+      "width": 540,
+      "height": 387,
+      "content_height": 185,
+      "bytes": 119813,
+      "sha256": "88b1126d5eab952f86d1d2fea2a6bbec7de17dfa8c07634f45691a9e2d36c00a"
+    }
+  },
+  {
+    "theme": "vapor",
+    "originals": [
+      {
+        "frame": 1,
+        "path": "assets/rvdash-tow-part2of3/tow/vapor-tow-1.png",
+        "width": 1672,
+        "height": 941,
+        "bit_depth": 8,
+        "png_color_type": 2,
+        "bytes": 1476113,
+        "sha256": "74144c88cbf878be518a853cf86721b726dd01ec1b2d3317ebab73876a783a6d"
+      },
+      {
+        "frame": 2,
+        "path": "assets/rvdash-tow-part2of3/tow/vapor-tow-2.png",
+        "width": 1672,
+        "height": 941,
+        "bit_depth": 8,
+        "png_color_type": 2,
+        "bytes": 1599544,
+        "sha256": "8e7b672f6c3770b222bfb877491bda4ff76a92d3c7413c972d31fe933fb0efd6"
+      },
+      {
+        "frame": 3,
+        "path": "assets/rvdash-tow-part2of3/tow/vapor-tow-3.png",
+        "width": 1672,
+        "height": 941,
+        "bit_depth": 8,
+        "png_color_type": 2,
+        "bytes": 1644484,
+        "sha256": "fecc6c02057f64ef19b253a14dfad8405ebcaf52a0eb6b7e1e78f9e03f43a998"
+      }
+    ],
+    "derivative": {
+      "source_frame": 1,
+      "crop": [
+        0,
+        0,
+        1672,
+        649
+      ],
+      "width": 540,
+      "height": 387,
+      "content_height": 210,
+      "bytes": 120695,
+      "sha256": "7c69a8f5428d4a69e901a319c35a9fad9b68443de9087e47ecec4dbeb2e77754"
+    }
+  },
+  {
+    "theme": "tokyo",
+    "originals": [
+      {
+        "frame": 1,
+        "path": "assets/rvdash-tow-part2of3/tow/tokyo-tow-1.png",
+        "width": 1672,
+        "height": 941,
+        "bit_depth": 8,
+        "png_color_type": 2,
+        "bytes": 1798752,
+        "sha256": "aeee959602ee806398aded67476d04ac34768732be6c2eed07644a836d6b91a3"
+      },
+      {
+        "frame": 2,
+        "path": "assets/rvdash-tow-part2of3/tow/tokyo-tow-2.png",
+        "width": 1672,
+        "height": 941,
+        "bit_depth": 8,
+        "png_color_type": 2,
+        "bytes": 1819643,
+        "sha256": "d84651dc1d89df1c7ce8aca351eac7019d30faf308d63892981ed7f1bdbfb066"
+      },
+      {
+        "frame": 3,
+        "path": "assets/rvdash-tow-part2of3/tow/tokyo-tow-3.png",
+        "width": 1672,
+        "height": 941,
+        "bit_depth": 8,
+        "png_color_type": 2,
+        "bytes": 1814388,
+        "sha256": "0f402684277f0d2f4e0e966dabb3694e5fbf9e5559537d677b32af78faac7121"
+      }
+    ],
+    "derivative": {
+      "source_frame": 1,
+      "crop": [
+        0,
+        0,
+        1672,
+        565
+      ],
+      "width": 540,
+      "height": 387,
+      "content_height": 182,
+      "bytes": 186549,
+      "sha256": "1963f7d0d9efa9f7f5cb33d831b96742751b41c2be5d9da3b28123264dcbdd0d"
+    }
+  },
+  {
+    "theme": "futuresynth",
+    "originals": [
+      {
+        "frame": 1,
+        "path": "assets/rvdash-tow-part3of3/tow/futuresynth-tow-1.png",
+        "width": 1672,
+        "height": 941,
+        "bit_depth": 8,
+        "png_color_type": 2,
+        "bytes": 1456949,
+        "sha256": "adee0529a023433ad5b101070221cc125affa2d745b3e2f8321e8f613a5fa5d9"
+      },
+      {
+        "frame": 2,
+        "path": "assets/rvdash-tow-part3of3/tow/futuresynth-tow-2.png",
+        "width": 1672,
+        "height": 941,
+        "bit_depth": 8,
+        "png_color_type": 2,
+        "bytes": 1585411,
+        "sha256": "a68bc9dfc8a776a190d1b3df359315934d69d455f4acf22b56a18568359a9762"
+      },
+      {
+        "frame": 3,
+        "path": "assets/rvdash-tow-part3of3/tow/futuresynth-tow-3.png",
+        "width": 1672,
+        "height": 941,
+        "bit_depth": 8,
+        "png_color_type": 2,
+        "bytes": 1498491,
+        "sha256": "b80300e2a6aa7b3dd12f99e299cb2eba7ef73cd617d088f53ea5422572d20467"
+      }
+    ],
+    "derivative": {
+      "source_frame": 1,
+      "crop": [
+        0,
+        0,
+        1672,
+        574
+      ],
+      "width": 540,
+      "height": 387,
+      "content_height": 185,
+      "bytes": 97020,
+      "sha256": "8d4aeb4cb76580e591438f0919077f754d0de726a34cc8f9963f7d44cbcb1e52"
+    }
+  },
+  {
+    "theme": "bitwave",
+    "originals": [
+      {
+        "frame": 1,
+        "path": "assets/rvdash-tow-part3of3/tow/bitwave-tow-1.png",
+        "width": 1672,
+        "height": 941,
+        "bit_depth": 8,
+        "png_color_type": 2,
+        "bytes": 1265663,
+        "sha256": "4bede45b23e63aa68e69f486c83da9ab11b9a04e48c883c5b5f8209a99079fda"
+      },
+      {
+        "frame": 2,
+        "path": "assets/rvdash-tow-part3of3/tow/bitwave-tow-2.png",
+        "width": 1672,
+        "height": 941,
+        "bit_depth": 8,
+        "png_color_type": 2,
+        "bytes": 1459301,
+        "sha256": "64e03ef06d083184e1606d4e11ab829cb0d1b0787958493a5e27cec5863d6f00"
+      },
+      {
+        "frame": 3,
+        "path": "assets/rvdash-tow-part3of3/tow/bitwave-tow-3.png",
+        "width": 1672,
+        "height": 941,
+        "bit_depth": 8,
+        "png_color_type": 2,
+        "bytes": 1411030,
+        "sha256": "b48a38c5badf0d42a2ac57424ec783464671aa96f00c537315f28800bf8273f9"
+      }
+    ],
+    "derivative": {
+      "source_frame": 1,
+      "crop": [
+        0,
+        0,
+        1672,
+        536
+      ],
+      "width": 540,
+      "height": 387,
+      "content_height": 173,
+      "bytes": 74836,
+      "sha256": "99211622b35064fb434a5439be3ed10406894480d0633760b93ad876762a5122"
+    }
+  },
+  {
+    "theme": "darksynth",
+    "originals": [
+      {
+        "frame": 1,
+        "path": "assets/rvdash-tow-part1of3/tow/darksynth-tow-1.png",
+        "width": 1672,
+        "height": 941,
+        "bit_depth": 8,
+        "png_color_type": 2,
+        "bytes": 1242123,
+        "sha256": "f56c956904e33882883b9c61a993379ac24052456a4eaa840e9ea3d6bb5e34ae"
+      },
+      {
+        "frame": 2,
+        "path": "assets/rvdash-tow-part1of3/tow/darksynth-tow-2.png",
+        "width": 1672,
+        "height": 941,
+        "bit_depth": 8,
+        "png_color_type": 2,
+        "bytes": 1259598,
+        "sha256": "873244a95acbdf6bb57200b5d52fbe9c685ef4f9949121e13f6ba80aa29b1c81"
+      },
+      {
+        "frame": 3,
+        "path": "assets/rvdash-tow-part1of3/tow/darksynth-tow-3.png",
+        "width": 1672,
+        "height": 941,
+        "bit_depth": 8,
+        "png_color_type": 2,
+        "bytes": 1393803,
+        "sha256": "a6e8ef48c79cfa973420af8cd830739689c425e29faead7ca16c1cc07ca6927e"
+      }
+    ],
+    "derivative": {
+      "source_frame": 1,
+      "crop": [
+        0,
+        0,
+        1672,
+        621
+      ],
+      "width": 540,
+      "height": 387,
+      "content_height": 201,
+      "bytes": 62634,
+      "sha256": "5ced313589d00d3c51750d29540d437da736bc2f904377a02f348dc87a2ac7e8"
+    }
+  }
+]

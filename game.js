@@ -155,6 +155,19 @@ function track(event, details = {}) {
     }
 }
 
+const TOW_THEMES = ['nostalgiawave', 'dreamwave', 'outrun', 'rad', 'vapor', 'tokyo', 'futuresynth', 'bitwave', 'darksynth'];
+const themeForLevel = level => TOW_THEMES[(level - 1) % TOW_THEMES.length];
+
+// Source red body centers and long-axis sizes. Limbs and motion effects retain their proportions.
+const TAGGY_BODY = {
+    'taggy-idle-right': [[80, 58, 100]],
+    'taggy-walk-right': [[77, 55, 94], [80, 55, 94], [80, 55, 94], [81, 55, 94]],
+    'taggy-fly': [[72, 64, 52], [72, 64, 52], [72, 64, 50], [72, 64, 48]],
+    'taggy-shoot': [[72, 64, 56], [72, 64, 54], [72, 64, 52]],
+    'taggy-hit': [[72, 64, 36], [72, 64, 39]]
+};
+const TAGGY_BODY_LENGTH = 46;
+
 const SKY_PALETTES = [
     ['dawn', '#403564', '#a06585', '#f1ad85', '#ffe1b3'],
     ['midday', '#255e93', '#568fb3', '#aed0d3', '#fff0bf'],
@@ -430,7 +443,7 @@ function registerOptionalFrames(scene) {
 function makeScenery(scene) {
     const foliage = [0, 2, 3, 4, 1, 5, 2];
     const rvLot = [0, 1, 2, 3].map((frame) =>
-        ['rv-lot-set', 75 + frame * 150, 579, 140, 74, 0xd4c8be, 'lot', 1, frame]);
+        ['rv-lot-set', 70 + frame * 150, 587 + (frame % 2) * 13, 121 + (frame % 2) * 16, 64, 0xe9ddd4, 'lot', 1, frame]);
     const hasFrame = (key, frame) => scene.textures.exists(key) && scene.textures.get(key).has(frame);
     const replaceRvs = rvLot.some(([key, , , , , , , , frame]) => hasFrame(key, frame));
     const scenery = SCENERY.flatMap((entry, index) => {
@@ -469,6 +482,10 @@ function boot() {
             for (const art of window.RV_OBSTACLES || []) this.load.image('obstacle-' + art.key, art.data);
             const assets = window.RV_DASH_EMBEDDED || {};
             loadBossSheets(this, assets);
+            const themes = window.RV_DASH_TOW_THEMES || {};
+            for (const key of TOW_THEMES) {
+                if (themes[key]) this.load.image('tow-' + key, themes[key]);
+            }
             this.loadFailures = new Set();
             const fail = (key) => {
                 this.loadFailures.add(key);
@@ -528,6 +545,8 @@ function boot() {
             if (this.loadFailures.size) return;
             this.sky = this.add.image(0, 0, 'sky-dawn').setOrigin(0).setDepth(-6);
             this.skyOverlay = this.add.image(0, 0, 'sky-dawn').setOrigin(0).setDepth(-5).setAlpha(0);
+            this.themeBackdrop = this.add.image(0, 430, 'sky-dawn').setOrigin(0, 1).setDepth(-4.5).setVisible(false);
+            this.setTheme(BOSS_DEBUG_LEVEL || 1);
             this.skyStage = 'dawn';
             this.skyTarget = 'dawn';
             this.skyBlendStart = 0;
@@ -555,7 +574,8 @@ function boot() {
                 }
             }
             this.playerShadow = this.add.ellipse(START_X, FLOOR_Y + 28, 61, 15, 0x13131c, .42).setDepth(2.7);
-            this.player = this.add.sprite(START_X, FLOOR_Y, 'taggy-idle-right', 0).setScale(0.5).setDepth(5);
+            this.player = this.add.sprite(START_X, FLOOR_Y, 'taggy-idle-right', 0).setDepth(5);
+            this.sizeTaggy();
             this.muted = true;
             this.leaderboard = BOSS_DEBUG_LEVEL ? null : window.RVLeaderboard.attach('rv-dash');
             this.leaderboard?.ready();
@@ -603,7 +623,10 @@ function boot() {
                 this.audio?.close().catch(() => {});
             });
             const autoFireButton = byId('auto-fire');
-            const updateAutoFire = () => autoFireButton.setAttribute('aria-pressed', String(this.autoFire));
+            const updateAutoFire = () => {
+                autoFireButton.textContent = 'Auto-fire: ' + (this.autoFire ? 'ON' : 'OFF');
+                autoFireButton.setAttribute('aria-pressed', String(this.autoFire));
+            };
             updateAutoFire();
             on(autoFireButton, 'click', () => {
                 this.autoFire = !this.autoFire;
@@ -686,7 +709,38 @@ function boot() {
                 if (event.code === 'KeyF') this.shootHeld = false;
             });
             const field = byId('playfield');
-            on(field, 'blur', () => { this.downHeld = false; this.roadKeys.clear(); });
+            on(field, 'blur', () => {
+                this.downHeld = false;
+                this.roadKeys.clear();
+                this.moveKeys.clear();
+                this.jumpHeld = false;
+                this.shootHeld = false;
+            });
+            const flight = byId('touch-flight');
+            on(document, 'pointercancel', () => this.clearInput());
+            on(document, 'touchcancel', () => this.clearInput());
+            on(flight, 'keydown', event => {
+                if (event.code !== 'Space' || this.arena || this.state !== STATES.PLAYING) return;
+                event.preventDefault();
+                if (event.repeat) return;
+                this.jumpHeld = true;
+                this.jumpStarted = this.elapsed;
+                this.jumpBufferedUntil = this.elapsed + JUMP_BUFFER_MS;
+                this.tryJump();
+            });
+            on(flight, 'blur', () => { this.jumpHeld = false; });
+            on(flight, 'pointerdown', (event) => {
+                if (event.button !== 0 || this.state !== STATES.PLAYING || this.arena || this.crashUntil
+                    || this.flightPointerId != null) return;
+                event.preventDefault();
+                flight.setPointerCapture(event.pointerId);
+                this.flightPointerId = event.pointerId;
+            });
+            for (const name of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+                on(flight, name, (event) => {
+                    if (event.pointerId === this.flightPointerId) this.flightPointerId = null;
+                });
+            }
             on(field, 'pointerdown', (event) => {
                 if (event.button !== 0 || this.crashUntil || this.state === STATES.PAUSED || this.loadFailures.size) return;
                 if (this.state === STATES.AWAITING_START) this.start();
@@ -704,7 +758,6 @@ function boot() {
                     if (event.pointerType === 'touch') {
                         this.touchStartX = event.clientX;
                         this.touchStartY = event.clientY;
-                        this.touchLiftAt = this.player.y >= this.roadDepth ? this.elapsed + 145 : this.elapsed;
                         this.touchPlayerX = this.player.x;
                         this.touchTargetX = this.player.x;
                     }
@@ -791,6 +844,11 @@ function boot() {
                 if (id != null && field.hasPointerCapture(id)) field.releasePointerCapture(id);
             }
             this.pointerId = null;
+            const flight = byId('touch-flight');
+            if (this.flightPointerId != null && flight.hasPointerCapture(this.flightPointerId)) {
+                flight.releasePointerCapture(this.flightPointerId);
+            }
+            this.flightPointerId = null;
             this.flightTap = null;
             this.rightTap = null;
         }
@@ -815,7 +873,7 @@ function boot() {
             this.hitPoseUntil = 0;
             this.horizontalSpeed = 0;
             this.nextShot = 0;
-            this.shotPoseUntil = 0;
+            this.shotFlashUntil = 0;
             this.resumeAt = -Infinity;
             this.roadElapsed = 0;
             this.enemyIndex = 0;
@@ -847,8 +905,8 @@ function boot() {
             this.nextExhaust = 0;
             this.idleLine = 0;
             this.player.anims.stop();
-            this.player.clearTint().setAlpha(1).setScale(0.5).setAngle(0).setPosition(START_X, FLOOR_Y);
-            this.drawTaggy(false);
+            this.player.clearTint().setAlpha(1).setAngle(0).setPosition(START_X, FLOOR_Y);
+            this.drawTaggy();
             this.banner.setVisible(false);
             this.resetSky();
             this.trailPoints.length = 0;
@@ -893,6 +951,7 @@ function boot() {
             byId('result').hidden = this.state !== GAME_OVER;
             byId('replay').hidden = this.state !== GAME_OVER;
             byId('arena-jump').hidden = this.state !== PLAYING || this.arena?.mode !== 'fight';
+            byId('touch-flight').hidden = this.state !== PLAYING || Boolean(this.arena) || Boolean(this.crashUntil);
         }
 
         updateStats() {
@@ -935,7 +994,18 @@ function boot() {
             this.updateSpeech();
         }
 
+        setTheme(level) {
+            this.theme = themeForLevel(level);
+            const key = 'tow-' + this.theme;
+            const image = this.textures.exists(key) ? this.textures.get(key).getSourceImage() : null;
+            const available = image?.width === 540 && image.height === 387;
+            this.themeBackdrop.setVisible(available);
+            if (available) this.themeBackdrop.setTexture(key).setScale(WIDTH / image.width);
+        }
+
         enterArena() {
+            this.clearInput();
+            this.setTheme(this.level);
             for (const {view} of this.segments) view.destroy();
             this.segments = [];
             for (const shot of this.shots) shot.destroy();
@@ -947,6 +1017,7 @@ function boot() {
             }
             this.banner.setVisible(false);
             this.arena = new BossArena(this, this.level);
+            byId('touch-flight').hidden = true;
             this.player.x = Math.min(this.player.x, BOSS_TUNING.playerRight);
             this.trailPoints.length = 0;
         }
@@ -961,6 +1032,7 @@ function boot() {
             this.elapsed += step;
             const dt = step / 1000;
             if (this.crashUntil) {
+                this.drawTaggy();
                 if (this.elapsed >= this.crashUntil) this.finish();
                 return;
             }
@@ -975,6 +1047,8 @@ function boot() {
                 }
                 if (arena.step(step)) {
                     this.clearArena();
+                    this.clearInput();
+                    byId('touch-flight').hidden = false;
                     this.resumeAt = this.elapsed;
                     this.nextPattern = this.scroll + SPAWN_TIMING.first;
                     this.banner.setText('LEVEL ' + this.level).setAlpha(1).setVisible(true);
@@ -1063,13 +1137,13 @@ function boot() {
         }
 
         roadPerspective() {
-            return .94 + .12 * (this.roadDepth - ROAD_LANES[0]) / (ROAD_LANES.at(-1) - ROAD_LANES[0]);
+            return .94 + .12 * ((this.roadDepth ?? FLOOR_Y) - ROAD_LANES[0]) / (ROAD_LANES.at(-1) - ROAD_LANES[0]);
         }
 
         fly(dt) {
             const airborne = this.player.y < this.roadDepth || this.verticalSpeed < 0;
-            const thrusting = !this.arena && (!this.touchDepthDirection && this.pointerId !== null
-                && (this.touchTargetX == null || this.elapsed >= this.touchLiftAt)
+            const thrusting = !this.arena && (this.flightPointerId != null
+                || this.pointerId !== null && this.touchTargetX == null
                 || this.jumpHeld && airborne && this.elapsed - this.jumpStarted >= FLIGHT_HOLD_MS
                 || this.elapsed < this.coffeeLiftUntil);
             if (!airborne) this.jumpGroundedAt = this.elapsed;
@@ -1098,12 +1172,7 @@ function boot() {
             }
             const tilt = this.verticalSpeed / RISE_CAP * 9;
             this.player.setAngle(reduced ? 0 : this.player.angle + (tilt - this.player.angle) * (1 - Math.exp(-13 * dt)));
-            const squash = reduced || this.player.y < floor ? 0 : Math.max(0, 1 - (this.elapsed - this.landedAt) / 145) * 0.13;
-            this.drawTaggy(thrusting);
-            const scale = ['taggy-fly', 'taggy-shoot', 'taggy-hit'].includes(this.player.texture.key) ? 1 : 0.5;
-            const landing = scale === 1 ? 0 : squash;
-            const perspective = this.roadPerspective();
-            this.player.setScale(scale * (1 + landing) * perspective, scale * (1 - landing) * perspective);
+            this.drawTaggy();
         }
 
         drawRoadPosition() {
@@ -1140,7 +1209,7 @@ function boot() {
                     this.skyOverlay.setAlpha(blend * blend * (3 - 2 * blend));
                 }
             }
-            this.clouds.setAlpha(stage === 'night' ? 0.38 : 0.85);
+            this.clouds.setAlpha(this.themeBackdrop.visible ? .24 : stage === 'night' ? .38 : .85);
             const offset = (name) => this.layerOffsets[name] || 0;
             this.clouds.tilePositionX = offset('clouds');
             this.hills.tilePositionX = offset('mountains');
@@ -1183,6 +1252,10 @@ function boot() {
         drawSpeedFX() {
             this.streaks.clear();
             this.trail.clear();
+            if (!this.reducedMotion.matches && this.elapsed < this.shotFlashUntil) {
+                this.trail.fillStyle(0xffe5a6).fillTriangle(this.player.x + 23, this.player.y - 4,
+                    this.player.x + 23, this.player.y + 4, this.player.x + 35, this.player.y);
+            }
             if (this.reducedMotion.matches || this.crashUntil || this.arena) {
                 this.trailPoints.length = 0;
                 return;
@@ -1208,31 +1281,37 @@ function boot() {
             }
         }
 
-        drawTaggy(thrusting) {
-            if (this.elapsed < this.hitPoseUntil) return;
+        sizeTaggy() {
+            const { frame, texture } = this.player;
+            const metrics = TAGGY_BODY[texture.key];
+            if (!metrics) return;
+            const [x, y, length] = metrics[Number(frame.name)] || metrics[0];
+            this.player.setOrigin(x / frame.width, y / frame.height)
+                .setScale(TAGGY_BODY_LENGTH / length * this.roadPerspective());
+        }
+
+        drawTaggy() {
             const airborne = this.player.y < (this.roadDepth ?? FLOOR_Y);
-            let key = airborne ? 'taggy-fly' : 'taggy-walk-right';
-            if (this.elapsed < this.shotPoseUntil) key = 'taggy-shoot';
-            if ((thrusting || airborne || key === 'taggy-shoot' || this.state === STATES.PLAYING)
-                && !this.reducedMotion.matches && this.anims.exists(key)) {
-                if (key !== 'taggy-shoot') this.player.play(key, true);
-            } else {
-                const pose = this.reducedMotion.matches && this.anims.exists(key) && key !== 'taggy-walk-right'
-                    ? key : 'taggy-idle-right';
-                if (this.player.texture.key !== pose) {
-                    this.player.anims.stop();
-                    this.player.setTexture(pose, 0);
-                }
-            }
+            const walking = Math.abs(this.horizontalSpeed || 0) > STOP_SPEED || Math.abs(this.depthSpeed || 0) > STOP_SPEED;
+            const hurt = this.crashUntil || this.state === STATES.GAME_OVER || this.elapsed < this.hitPoseUntil;
+            const key = hurt && this.textures.exists('taggy-hit') ? 'taggy-hit'
+                : airborne && this.anims.exists('taggy-fly') ? 'taggy-fly'
+                    : walking && this.anims.exists('taggy-walk-right') ? 'taggy-walk-right' : 'taggy-idle-right';
+            if (key === 'taggy-hit') {
+                const pose = this.crashUntil && this.elapsed >= this.hitPoseUntil ? 1 : 0;
+                this.player.anims.stop();
+                this.player.setTexture(key, pose);
+            } else if (this.reducedMotion.matches || key === 'taggy-idle-right') {
+                this.player.anims.stop();
+                this.player.setTexture(key, 0);
+            } else this.player.play(key, true);
+            this.sizeTaggy();
         }
 
         fire() {
             if (this.state !== STATES.PLAYING || this.elapsed < this.nextShot || this.crashUntil) return;
             this.nextShot = this.elapsed + SHOT_MS;
-            this.shotPoseUntil = this.elapsed + 3 * 1000 / 14;
-            if (this.elapsed >= this.hitPoseUntil && this.anims.exists('taggy-shoot') && !this.reducedMotion.matches) {
-                this.player.play('taggy-shoot').setScale(1);
-            }
+            this.shotFlashUntil = this.elapsed + 75;
             const shot = this.add.sprite(this.player.x + 29, this.player.y, 'bill-projectile', this.firstFrame('bill-projectile')).setDepth(4);
             if (!this.anims.exists('bill-projectile')) shot.setDisplaySize(40, 27);
             if (this.anims.exists('bill-projectile') && !this.reducedMotion.matches) shot.play('bill-projectile');
@@ -1495,13 +1574,8 @@ function boot() {
             this.hitPoseUntil = this.elapsed + 250;
             this.flashUntil = this.elapsed + 180;
             this.immuneUntil = this.elapsed + IMMUNITY_MS;
-            this.shotPoseUntil = 0;
-            if (this.anims.exists('taggy-hit')) {
-                this.player.anims.stop();
-                this.player.setScale(1);
-                if (this.reducedMotion.matches) this.player.setTexture('taggy-hit', 0);
-                else this.player.play('taggy-hit');
-            }
+            this.shotFlashUntil = 0;
+            this.drawTaggy();
             if (!this.reducedMotion.matches) this.player.setTint(0xff8267);
             if (this.hp > 0) {
                 this.speak('Still rolling.');
@@ -1510,6 +1584,7 @@ function boot() {
             this.clearArena();
             this.crashAt = this.elapsed;
             this.crashUntil = this.elapsed + CRASH_MS;
+            byId('touch-flight').hidden = true;
             this.clearInput();
             if (!this.reducedMotion.matches) this.cameras.main.shake(110, 0.0018);
             this.speak("Ouch... that's a tag!");

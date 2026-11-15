@@ -167,3 +167,17 @@ main { margin-top: max(10px, env(safe-area-inset-top)); }
 #test-mode { color: #fff0a5; grid-column: 2; grid-row: 1; }
 #boss-note { grid-column: 1 / -1; color: #abf5ff; }
 #arena-jump { position: absolute; z-index: 3; right: 8px; top: 76px; min-height: 44px; touch-action: none; }
+
+#touch-flight {
+  display: none; position: absolute; z-index: 3; right: 8px; top: 76px;
+  min-height: 44px; touch-action: none;
+}
+@media (any-pointer: coarse) {
+  #touch-flight:not([hidden]) { display: inline-grid; }
+}
+@media (max-width: 430px) {
+  #console .utility button { font-size: .64rem; }
+  #console .utility .key-face { padding-inline: 5px; }
+  #console .utility #auto-fire { padding-inline: 6px; }
+  .bar .stats { flex-basis: 130px; }
+}

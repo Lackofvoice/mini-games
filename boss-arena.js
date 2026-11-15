@@ -5,16 +5,16 @@ const BOSS_TUNING = {
     sealIn: 140, sealHold: 900, reward: 250, projectiles: 24, minions: 6,
     x: 520, y: 684, playerRight: 449, laneHalfDepth: 22,
     shieldHP: 6, shieldRegen: 5000, shieldWindow: 2100, shieldCycle: 6200, shieldTell: 900,
-    clipboardWindow: 2000, minionHP: 2, waveDelay: 6000, mergerStagger: 1200
+    clipboardWindow: 2000, clipboardBudget: 2, aimTolerance: 25, minionHP: 2, waveDelay: 6000, mergerStagger: 1200
 };
 
 const BOSS_DEFINITIONS = [
     { id: 'lowballer', name: 'THE LOWBALLER', hp: 14, color: 0xe0447c, attacks: [['coin'], ['coin']], phases: [.5], interval: 1800 },
-    { id: 'tirekicker', name: 'THE TIRE KICKER', hp: 18, color: 0x646887, attacks: [['tire']], phases: [], interval: 2000 },
-    { id: 'greeter', name: 'THE GREETER', hp: 20, color: 0x199a95, attacks: [['minions']], phases: [], interval: 6000 },
+    { id: 'tirekicker', name: 'THE TIRE KICKER', hp: 18, aim: true, color: 0x646887, attacks: [['tire']], phases: [], interval: 2000 },
+    { id: 'greeter', name: 'THE GREETER', hp: 20, aim: true, openingVolley: true, color: 0x199a95, attacks: [['minions']], phases: [], interval: 6000 },
     { id: 'warranty', name: 'THE EXTENDED WARRANTY GUY', hp: 24, color: 0xca755a, attacks: [['paper']], phases: [], interval: 3000 },
-    { id: 'invoice', name: 'MR. INVOICE PRICE', hp: 28, color: 0x6a62d0, attacks: [['grid-v'], ['grid-h'], ['grid-z']], phases: [.66, .33], interval: 3800 },
-    { id: 'merger', name: 'CORPORATE MERGER', hp: 42, color: 0x924cac, attacks: [['coin','tire'], ['minions','paper'], ['grid-z','tire']], phases: [.66, .33], interval: 4000 }
+    { id: 'invoice', name: 'MR. INVOICE PRICE', hp: 28, aim: true, openingVolley: true, color: 0x6a62d0, attacks: [['grid-v'], ['grid-h'], ['grid-z']], phases: [.66, .33], interval: 3800 },
+    { id: 'merger', name: 'CORPORATE MERGER', hp: 42, aim: true, openingVolley: true, color: 0x924cac, attacks: [['coin','tire'], ['minions','paper'], ['grid-z','tire']], phases: [.66, .33], interval: 4000 }
 ];
 
 const ARENA_ATTACKS = {
@@ -102,6 +102,9 @@ class BossArena {
         this.shield = BOSS_TUNING.shieldHP;
         this.shieldHitAt = -Infinity;
         this.clipboardUntil = 0;
+        this.clipboardCharge = 0;
+        this.volleyHit = false;
+        this.phaseVolleyDone = false;
         this.attackAt = BOSS_TUNING.intro + BOSS_TUNING.grace;
         this.intermissionUntil = 0;
         this.plan = null;
@@ -120,6 +123,14 @@ class BossArena {
     }
 
     get active() { return this.mode === 'fight' && this.age >= this.intermissionUntil; }
+    get lowballer() { return this.spec.id === 'lowballer'; }
+    get opportunity() { return this.active && (!this.spec.openingVolley || this.phaseVolleyDone); }
+    get clipboardOpen() { return this.clipboardCharge > 0 && this.age < this.clipboardUntil; }
+    get aimLane() {
+        if (this.spec.id === 'greeter' && this.waveLane != null) return (this.waveLane + 1) % ROAD_LANES.length;
+        return this.turn % ROAD_LANES.length;
+    }
+    get aimY() { return ROAD_LANES[this.aimLane]; }
     get warranty() { return this.spec.id === 'warranty'; }
     get shieldOpening() {
         const clock = (this.age - BOSS_TUNING.intro) % BOSS_TUNING.shieldCycle;
@@ -156,6 +167,8 @@ class BossArena {
         const kind = attacks[this.phaseTurn++ % attacks.length];
         const lane = this.scene.roadLane;
         this.turn++;
+        this.volleyHit = false;
+        if (kind === 'minions') this.waveLane = lane;
         const repeats = kind === 'coin' && this.spec.id === 'lowballer' && this.phase ? 2
             : kind === 'tire' && this.spec.id === 'tirekicker' && this.turn % 5 === 0 ? 2 : 1;
         this.plan = { kind, lane, at: this.age + BOSS_TUNING.reaction, repeats };
@@ -184,9 +197,6 @@ class BossArena {
         }
         const intervalRamp = this.spec.id === 'tirekicker' ? 1 - Math.min(.30, .06 * this.hits) : 1;
         this.attackAt = this.age + Math.max(.55, this.stats.pace * intervalRamp) * this.spec.interval;
-        if (kind === 'coin' && this.spec.id === 'lowballer' && this.turn % 4 === 0) {
-            this.clipboardUntil = this.age + BOSS_TUNING.clipboardWindow;
-        }
     }
 
     moveThreats(ms) {
@@ -201,11 +211,22 @@ class BossArena {
             const inLane = Math.abs(s.roadDepth - ROAD_LANES[t.lane]) < BOSS_TUNING.laneHalfDepth;
             const overlap = attack.time ? s.player.x + PLAYER_HALF_WIDTH > t.x && s.player.x - PLAYER_HALF_WIDTH < t.x + t.length
                 : Math.abs(s.player.x - t.x) < PLAYER_HALF_WIDTH + attack.width;
-            if (!t.scatter && inLane && overlap && (attack.time || altitude < attack.clearance)) s.hitObstacle();
+            if (!t.scatter && inLane && overlap && (attack.time || altitude < attack.clearance)) {
+                this.volleyHit = true;
+                s.hitObstacle();
+            }
             return !s.crashUntil;
         });
-        if (hadThreats && !this.threats.length && this.spec.id === 'greeter') {
-            this.attackAt = this.age + BOSS_TUNING.waveDelay;
+        if (hadThreats && !this.threats.length && !this.followUp) this.completeVolley();
+    }
+
+    completeVolley() {
+        this.phaseVolleyDone = true;
+        if (this.spec.id === 'greeter') this.attackAt = this.age + BOSS_TUNING.waveDelay;
+        if (this.lowballer && !this.volleyHit) {
+            this.clipboardUntil = this.age + BOSS_TUNING.clipboardWindow;
+            this.clipboardCharge = BOSS_TUNING.clipboardBudget;
+            this.clipboardDamage = this.turn % 4 === 0 ? 2 : 1;
         }
     }
 
@@ -223,19 +244,29 @@ class BossArena {
                         minion.at = this.age;
                     } else minion.speed = Math.max(minion.speed, ARENA_ATTACKS.minions.speed * this.stats.speed * 1.15);
                 }
-                if (this.spec.id === 'greeter') this.attackAt = this.age + BOSS_TUNING.waveDelay;
+                if (this.spec.id === 'greeter' && (!this.threats.length || target.middle)) {
+                    this.completeVolley();
+                }
             }
             return true;
         }
-        if (Math.abs(shot.x - BOSS_TUNING.x) >= 44 || Math.abs(shot.y - BOSS_TUNING.y) >= 68) return false;
-        if (!this.active || this.spec.id === 'greeter' && this.intactFormation) return true;
+        const baseY = this.spec.aim ? this.aimY : BOSS_TUNING.y;
+        const span = this.spec.aim ? BOSS_TUNING.aimTolerance : 68;
+        if (Math.abs(shot.x - BOSS_TUNING.x) >= 44 || Math.abs(shot.y - baseY) >= span) return false;
+        if (!this.opportunity || this.spec.id === 'greeter' && this.intactFormation) return true;
         if (this.warranty && this.shield > 0 && !this.shieldOpening) {
             this.shield--;
             this.shieldHitAt = this.age;
             return true;
         }
+        let damage = 1;
+        if (this.lowballer) {
+            if (!this.clipboardOpen) return true;
+            damage = Math.min(this.clipboardCharge, this.clipboardDamage);
+            this.clipboardCharge -= damage;
+        }
         this.hits++;
-        this.hp = Math.max(0, this.hp - (this.age < this.clipboardUntil && shot.y < BOSS_TUNING.y + 12 ? 2 : 1));
+        this.hp = Math.max(0, this.hp - damage);
         this.poseUntil = this.age + 135;
         if (!this.hp) {
             this.mode = 'defeat';
@@ -249,6 +280,8 @@ class BossArena {
         if (phase > this.phase) {
             this.phase = phase;
             this.phaseTurn = 0;
+            this.phaseVolleyDone = false;
+            this.clipboardCharge = 0;
             this.clearThreats();
             this.intermissionUntil = this.age + BOSS_TUNING.intermission;
             this.attackAt = this.intermissionUntil + 500;
@@ -265,7 +298,7 @@ class BossArena {
     paint() {
         const art = this.view.clear();
         const { x, y } = BOSS_TUNING;
-        const guarded = this.spec.id === 'greeter' && this.intactFormation || this.warranty && this.shield > 0 && !this.shieldOpening;
+        const guarded = this.lowballer && !this.clipboardOpen || !this.opportunity || this.spec.id === 'greeter' && this.intactFormation || this.warranty && this.shield > 0 && !this.shieldOpening;
         const pose = this.mode === 'defeat' ? 3 : this.age < this.poseUntil ? 2 : this.plan ? 1 : 0;
         if (this.sprite) this.sprite.setFrame(pose);
         else {
@@ -294,7 +327,12 @@ class BossArena {
                 }
             } else art.fillStyle(0xfff2df).fillRect(x + 6, y - 19, 19, 10);
         }
-        if (guarded) art.lineStyle(4, 0x83eef6).strokeRoundedRect(x - 56, y - 95, 94, 135, 9);
+        if (this.spec.aim && this.mode === 'fight') {
+            const target = this.aimY;
+            art.lineStyle(3, guarded ? 0xb1c3dd : 0x8ffbe2).strokeRect(x - 47, target - 15, 20, 30);
+            art.lineBetween(x - 55, target, x - 21, target);
+        }
+        if (guarded && this.mode !== 'defeat') art.lineStyle(4, 0x83eef6).strokeRoundedRect(x - 56, y - 95, 94, 135, 9);
         else if (this.warranty && this.shieldOpening) art.lineStyle(3, 0x83eef6).lineBetween(x - 78, y, x - 54, y);
         const warning = this.plan || this.followUp;
         if (warning) {
@@ -336,10 +374,16 @@ class BossArena {
         const jump = document.getElementById('arena-jump');
         const message = this.mode === 'intro' ? 'Get ready' : this.mode === 'defeat' ? 'Approved'
             : !this.active ? 'Phase ' + (this.phase + 1) + ' incoming'
+                : this.lowballer ? this.clipboardOpen ? 'Clipboard open · Shoot now'
+                    : this.plan || this.threats.length ? 'Dodge the marked coin volley' : 'Clipboard closed · Watch the lane'
                 : this.warranty && this.shieldOpening ? 'Shield open'
                     : this.warranty && guarded ? (this.age - BOSS_TUNING.intro) % BOSS_TUNING.shieldCycle
                          >= BOSS_TUNING.shieldCycle - BOSS_TUNING.shieldWindow - BOSS_TUNING.shieldTell ? 'Shield opening soon' : 'Shield ' + this.shield
-                        : guarded ? 'Formation shield' : this.plan || this.followUp ? 'Clear the marked lane' : 'Jump and fire';
+                        : this.spec.id === 'greeter' && this.intactFormation ? 'Shoot the marked middle minion'
+                        : this.plan || this.followUp ? 'Clear the marked lane'
+                            : guarded ? 'Dodge the opening volley'
+                                : this.spec.aim ? 'Line up with the target • ' + ['Far', 'Middle', 'Near'][this.aimLane]
+                                    : 'Jump and fire';
         if (heading.textContent !== this.spec.name) heading.textContent = this.spec.name;
         if (note.textContent !== message) note.textContent = message;
         if (meter.max !== this.stats.hp) meter.max = this.stats.hp;

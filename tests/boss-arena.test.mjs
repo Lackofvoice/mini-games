@@ -52,7 +52,9 @@ test('Merger intermission clears obsolete attacks and the new pair shares its wa
     const arena = arenaAt(6);
     arena.hp = 28;
     arena.warn();
-    const { x, y } = BOSS_TUNING;
+    const { x } = BOSS_TUNING;
+    const y = arena.aimY;
+    arena.phaseVolleyDone = true;
     assert.ok(arena.hit({ x, y }));
     assert.equal(arena.phase, 1);
     assert.equal(arena.plan, null);
@@ -66,4 +68,24 @@ test('Merger intermission clears obsolete attacks and the new pair shares its wa
     assert.equal(arena.followUp.kind, 'paper');
     assert.equal(arena.followUp.lane, arena.plan.lane);
     assert.equal(arena.followUp.at - arena.plan.at, 1200);
+});
+
+test('Lowballer damage requires a clean volley and has a two-point opening budget', () => {
+    const arena = arenaAt(1);
+    const { x, y } = BOSS_TUNING;
+    arena.hit({ x, y });
+    assert.equal(arena.hp, 14);
+    arena.volleyHit = true;
+    arena.completeVolley();
+    arena.hit({ x, y });
+    assert.equal(arena.hp, 14);
+    arena.volleyHit = false;
+    arena.turn = 4;
+    arena.completeVolley();
+    arena.hit({ x, y });
+    arena.hit({ x, y });
+    assert.equal(arena.hp, 12);
+    const shortestTravel = (548 + 40) / 155 * 1000;
+    const earliestMs = BOSS_TUNING.grace + 7 * (BOSS_TUNING.reaction + shortestTravel);
+    assert.ok(earliestMs >= 30000);
 });

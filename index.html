@@ -4,18 +4,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RV Dash</title>
-  <link rel="stylesheet" href="arcade.css?v=19">
-  <link rel="stylesheet" href="cabinet.css?v=19">
-  <link rel="stylesheet" href="synthwave.css?v=19">
-  <script defer src="vendor/phaser.min.js?v=19"></script>
-  <script defer src="game_assets/embedded-assets.js?v=19"></script>
-  <script defer src="leaderboard-config.js?v=19"></script>
-  <script defer src="leaderboard.js?v=19"></script>
-  <script defer src="game_assets/obstacles.js?v=19"></script>
-  <script defer src="game_assets/road-obstacle-sheet.js?v=19"></script>
-  <script defer src="boss-arena.js?v=19"></script>
-  <script defer src="game.js?v=19"></script>
-  <script defer src="cabinet.js?v=19"></script>
+  <link rel="stylesheet" href="arcade.css?v=20">
+  <link rel="stylesheet" href="cabinet.css?v=20">
+  <link rel="stylesheet" href="synthwave.css?v=20">
+  <script defer src="vendor/phaser.min.js?v=20"></script>
+  <script defer src="game_assets/embedded-assets.js?v=20"></script>
+  <script defer src="leaderboard-config.js?v=20"></script>
+  <script defer src="leaderboard.js?v=20"></script>
+  <script defer src="game_assets/obstacles.js?v=20"></script>
+  <script defer src="game_assets/road-obstacle-sheet.js?v=20"></script>
+  <script defer src="game_assets/tow-themes.js?v=20"></script>
+  <script defer src="boss-arena.js?v=20"></script>
+  <script defer src="game.js?v=20"></script>
+  <script defer src="cabinet.js?v=20"></script>
 </head>
 <body>
   <main>
@@ -33,7 +34,7 @@
           <div class="utility" role="group" aria-label="Utility keys">
             <button id="sound" aria-pressed="false" disabled>Sound off</button>
             <button id="fullscreen" type="button" aria-pressed="false">Fullscreen</button>
-            <button id="auto-fire" type="button" aria-pressed="false">Auto-fire</button>
+            <button id="auto-fire" type="button" aria-pressed="true">Auto-fire: ON</button>
             <button id="show-help" type="button" aria-haspopup="dialog">Controls</button>
           </div>
         </div>
@@ -46,12 +47,13 @@
           <label id="shot-status" hidden>Shot <progress id="shot-meter" aria-label="Shot readiness" max="1" value="1"></progress></label>
         </div>
         <div id="game-area">
-          <div id="playfield" tabindex="-1" role="group" aria-label="Taggy flight course. Tap Space to jump. Hold Space, mouse, or the left touch half to fly. Use Up/W and Down/S to walk across the road. Steer with Left/Right, A/D, or by dragging the left touch. Shoot with F, click or tap, or use the Auto-fire button. Pause with P or Escape.">
+          <div id="playfield" tabindex="-1" role="group" aria-label="Taggy flight course. Tap Space to jump. Hold Space, mouse, or the Fly button to fly outside boss arenas. Use Up/W and Down/S to walk across the road. Steer with Left/Right, A/D, or by dragging the left touch. Shoot with F, click or tap, or use the Auto-fire button. Pause with P or Escape.">
             <div id="boss-hud" hidden>
               <strong id="boss-name"></strong><span id="test-mode" hidden>TEST MODE</span>
               <progress id="boss-hp" aria-label="Boss health" max="1" value="1"></progress>
               <span id="boss-note"></span>
             </div>
+            <button id="touch-flight" type="button" aria-label="Hold to fly" hidden>Hold to fly</button>
             <button id="arena-jump" type="button" hidden>Jump</button>
             <p id="speech" hidden></p>
           </div>
@@ -110,7 +112,7 @@
           <span><b>Road depth</b> Up / W, Down / S (Q / E fallback)</span>
           <span><b>Jump</b> Space</span>
           <span><b>Pause</b> P</span>
-          <span class="touch-hint"><b>Touch</b> Hold left to fly. Drag vertically from the road to walk. Tap either side to shoot.</span>
+          <span class="touch-hint"><b>Touch</b> Use Hold to fly during the road run. Drag left-side to steer or walk across the road. Tap to shoot.</span>
         </section>
       </section>
       <aside class="side-panel" aria-label="Game and shopping controls">
@@ -135,7 +137,7 @@
         <dt>Steer</dt><dd>Left / Right or A / D.</dd>
         <dt>Shoot</dt><dd>Hold F, click, tap, or toggle Auto-fire. All shots share the same cooldown.</dd>
         <dt>Pause</dt><dd>P or Escape.</dd>
-        <dt>Touch</dt><dd>On the left, hold to fly, drag sideways to steer, or drag vertically from the road to walk. Tap either side to shoot.</dd>
+        <dt>Touch</dt><dd>Hold the Fly button during road runs. Drag on the left to steer or walk across the road. Tap either side to shoot.</dd>
       </dl>
       <form method="dialog"><button autofocus>Close controls</button></form>
     </dialog>
