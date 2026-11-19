@@ -1,29 +1,80 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-art="realistic">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RV Dash</title>
-  <link rel="stylesheet" href="arcade.css?v=20">
-  <link rel="stylesheet" href="cabinet.css?v=20">
-  <link rel="stylesheet" href="synthwave.css?v=20">
-  <script defer src="vendor/phaser.min.js?v=20"></script>
-  <script defer src="game_assets/embedded-assets.js?v=20"></script>
-  <script defer src="leaderboard-config.js?v=20"></script>
-  <script defer src="leaderboard.js?v=20"></script>
-  <script defer src="game_assets/obstacles.js?v=20"></script>
-  <script defer src="game_assets/road-obstacle-sheet.js?v=20"></script>
-  <script defer src="game_assets/tow-themes.js?v=20"></script>
-  <script defer src="boss-arena.js?v=20"></script>
-  <script defer src="game.js?v=20"></script>
-  <script defer src="cabinet.js?v=20"></script>
+  <link rel="stylesheet" href="arcade.css?v=22d">
+  <link rel="stylesheet" href="cabinet.css?v=22o-art">
+  <link rel="stylesheet" href="synthwave.css?v=22o">
+  <link rel="stylesheet" href="dayglow-art.css?v=22j">
+  <script defer src="vendor/phaser.min.js?v=21"></script>
+  <script defer src="game_assets/embedded-assets.js?v=21"></script>
+  <script defer src="leaderboard-config.js?v=21"></script>
+  <script defer src="local-scores.js?v=22o"></script>
+  <script defer src="leaderboard.js?v=22o"></script>
+  <script defer src="game_assets/obstacles.js?v=21"></script>
+  <script defer src="game_assets/road-obstacle-sheet.js?v=21"></script>
+  <script defer src="game_assets/tow-themes.js?v=21"></script>
+  <script defer src="boss-arena.js?v=22k"></script>
+  <script defer src="demo-mode.js?v=22n"></script>
+  <script defer src="game.js?v=22o"></script>
+  <script defer src="game_assets/cabinet-art.js?v=22"></script>
+  <script defer src="cabinet.js?v=22i"></script>
+  <script defer src="atmosphere.js?v=22j"></script>
+  <script type="application/json" id="cabinet-art-manifest">
+    {
+      "enabled": true,
+      "artSets": [
+        {"id":"default","label":"Default Realistic","ad":false,"slots":{"marquee":"assets/cabinet/rv-dash-cabinet-marquee-1824x112.png","left":"assets/cabinet/rv-dash-cabinet-left-690x1980.png","right":"assets/cabinet/rv-dash-cabinet-right-690x1980.png","deck":"assets/cabinet/rv-dash-cabinet-deck-1267x175.png"}},
+        {"id":"set-01","label":"Neon Heritage","ad":false,"slots":{"marquee":"assets/cabinet/set-01-marquee.png","left":"assets/cabinet/set-01-left.png","right":"assets/cabinet/set-01-right.png"}},
+        {"id":"set-02","label":"Find Your Weekend","ad":true,"slots":{"marquee":"assets/cabinet/set-02-marquee.png","left":"assets/cabinet/set-02-left.png","right":"assets/cabinet/set-02-right.png"}},
+        {"id":"set-03","label":"Bring The Toys","ad":true,"slots":{"marquee":"assets/cabinet/set-03-marquee.png","left":"assets/cabinet/set-03-left.png","right":"assets/cabinet/set-03-right.png"}},
+        {"id":"set-04","label":"More Room To Roam","ad":true,"slots":{"marquee":"assets/cabinet/set-04-marquee.png","left":"assets/cabinet/set-04-left.png","right":"assets/cabinet/set-04-right.png"}},
+        {"id":"set-05","label":"Find Your Overlook","ad":true,"slots":{"marquee":"assets/cabinet/set-05-marquee.png","left":"assets/cabinet/set-05-left.png","right":"assets/cabinet/set-05-right.png"}},
+        {"id":"set-06","label":"Tron Grid Lot","ad":false,"slots":{"marquee":"assets/cabinet/set-06-marquee.png","left":"assets/cabinet/set-06-left.png","right":"assets/cabinet/set-06-right.png"}},
+        {"id":"set-07","label":"80s Rad Taggy","ad":false,"slots":{"marquee":"assets/cabinet/set-07-marquee.png","left":"assets/cabinet/set-07-left.png","right":"assets/cabinet/set-07-right.png"}},
+        {"id":"set-08","label":"Vaporsynth Escape","ad":true,"slots":{"marquee":"assets/cabinet/set-08-marquee.png","left":"assets/cabinet/set-08-left.png","right":"assets/cabinet/set-08-right.png"}},
+        {"id":"set-09","label":"Futuresynth Drive","ad":false,"slots":{"marquee":"assets/cabinet/set-09-marquee.png","left":"assets/cabinet/set-09-left.png","right":"assets/cabinet/set-09-right.png"}},
+        {"id":"set-10","label":"Bitwave Trails","ad":false,"slots":{"marquee":"assets/cabinet/set-10-marquee.png","left":"assets/cabinet/set-10-left.png","right":"assets/cabinet/set-10-right.png"}},
+        {"id":"set-11","label":"Holiday Camping","ad":true,"seasonal":true,"enabled":false,"slots":{"marquee":"assets/cabinet/set-11-marquee.png","left":"assets/cabinet/set-11-left.png","right":"assets/cabinet/set-11-right.png"}}
+      ]
+    }
+  </script>
+  <script defer src="cabinet-art-cycle.js?v=22l"></script>
 </head>
 <body>
   <main>
+    <div class="arcade-atmosphere" aria-hidden="true">
+      <div id="page-scene"><div></div><div></div></div>
+      <div class="starfield" aria-hidden="true">
+        <div class="stars stars--far"></div><div class="stars stars--mid"></div><div class="stars stars--near"></div>
+        <i class="comet"></i>
+      </div>
+      <div class="smoke" aria-hidden="true">
+        <span style="--i:0"></span><span style="--i:1"></span><span style="--i:2"></span>
+        <span style="--i:3"></span><span style="--i:4"></span><span style="--i:5"></span>
+        <span style="--i:6"></span><span style="--i:7"></span><span style="--i:8"></span>
+        <span style="--i:9"></span><span style="--i:10"></span><span style="--i:11"></span>
+      </div>
+      <div class="lasers" aria-hidden="true">
+        <span class="laser" style="--i:0;--color:var(--prrv-red)"></span>
+        <span class="laser" style="--i:1;--color:var(--neon-cyan)"></span>
+        <span class="laser" style="--i:2;--color:var(--neon-magenta)"></span>
+        <span class="laser" style="--i:3;--color:var(--neon-lime)"></span>
+        <span class="laser" style="--i:4;--color:var(--prrv-red)"></span>
+        <span class="laser" style="--i:5;--color:var(--neon-cyan)"></span>
+      </div>
+    </div>
     <header class="masthead">
       <div>
         <div class="brand">Price Right RV</div>
         <h1>RV Dash</h1>
+      </div>
+      <div id="fullscreen-attract" hidden aria-label="Fullscreen invitation">
+        <p>Go fullscreen. Get the full arcade experience.</p>
+        <button id="accept-fullscreen" type="button"><span class="btn-label">Go fullscreen</span></button>
+        <button id="dismiss-fullscreen" type="button"><span class="btn-label">Dismiss</span></button>
       </div>
       <div class="best-chip"><span>Best score</span><strong id="page-best">0</strong></div>
     </header>
@@ -32,32 +83,90 @@
         <div class="instrument">
           <div class="readout"><i aria-hidden="true"></i><span id="cabinet-status" role="status">Loading</span></div>
           <div class="utility" role="group" aria-label="Utility keys">
-            <button id="sound" aria-pressed="false" disabled>Sound off</button>
-            <button id="fullscreen" type="button" aria-pressed="false">Fullscreen</button>
-            <button id="auto-fire" type="button" aria-pressed="true">Auto-fire: ON</button>
-            <button id="show-help" type="button" aria-haspopup="dialog">Controls</button>
+            <button id="sound" type="button" aria-pressed="false" disabled><span class="btn-label">Sound off</span></button>
+            <button id="fullscreen" type="button" aria-pressed="false"><span class="btn-label">Fullscreen</span></button>
+            <button id="auto-fire" type="button" aria-pressed="false"><span class="btn-label">Auto-fire: OFF</span></button>
+            <button id="show-help" type="button" aria-haspopup="dialog"><span class="btn-label">Controls</span></button>
           </div>
         </div>
         <p id="utility-status" role="status" hidden></p>
         <div class="bar">
           <div class="stats"><span>Score <strong id="score">0</strong></span><span>Level <strong id="level">1</strong></span><span>Health <strong id="health" role="img" aria-label="Health 2 of 5">♥♥♡♡♡</strong></span></div>
-          <button id="start" class="primary" disabled>Start game</button>
-          <button id="replay" class="primary" aria-describedby="final-score" hidden>Play again</button>
-          <button id="pause" aria-label="Pause or resume (P or Escape)" hidden>Pause</button>
+          <button id="start" class="primary" type="button" disabled><span class="btn-label">Start game</span></button>
+          <button id="replay" class="primary" type="button" aria-describedby="final-score" hidden><span class="btn-label">Play again</span></button>
+          <button id="pause" type="button" aria-label="Pause or resume (P or Escape)" hidden><span class="btn-label">Pause</span></button>
           <label id="shot-status" hidden>Shot <progress id="shot-meter" aria-label="Shot readiness" max="1" value="1"></progress></label>
         </div>
+        <div id="cabinet-screen" class="cabinet-screen">
+          <div class="cabinet-marquee" aria-hidden="true">
+            <span id="marquee-label">RV Dash</span>
+            <img id="cabinet-image" alt="" hidden>
+          </div>
         <div id="game-area">
-          <div id="playfield" tabindex="-1" role="group" aria-label="Taggy flight course. Tap Space to jump. Hold Space, mouse, or the Fly button to fly outside boss arenas. Use Up/W and Down/S to walk across the road. Steer with Left/Right, A/D, or by dragging the left touch. Shoot with F, click or tap, or use the Auto-fire button. Pause with P or Escape.">
+          <div class="side-illustration left" aria-hidden="true">
+            <i></i>
+            <div class="rv-panel rv-panel-lot">
+              <b>PRICE RIGHT<span>RV</span></b>
+              <img src="game_assets/taggy/taggy_idle.png" alt="">
+              <svg viewBox="0 0 140 60">
+                <path fill="#454072" d="M0 42h140v18H0z"/>
+                <path fill="#8b72ab" d="M4 24h31l8 9v14H4zm83-7h38l10 13v17H87z"/>
+                <path fill="#25213f" d="M9 29h12v8H9zm16 0h9v8h-9zm68-7h11v10H93zm15 0h14v10h-14z"/>
+                <path fill="#35ecfa" d="M4 41h39v2H4zm83-4h48v2H87z"/>
+                <path fill="#1b1730" d="M10 44h12v8H10zm22 0h8v8h-8zm60 0h12v8H92zm31 0h8v8h-8z"/>
+              </svg>
+            </div>
+          </div>
+          <div class="side-illustration right" aria-hidden="true">
+            <i></i>
+            <div class="rv-panel rv-panel-drive">
+              <b>RV DASH</b>
+              <div class="rv-panel-stride"><img src="game_assets/taggy/taggy_walk.png" alt=""></div>
+              <svg viewBox="0 0 140 60">
+                <path fill="#242043" d="M65 2h10l57 58H8z"/>
+                <path fill="#ac63db" d="M65 2 8 60h7L66 2zm10 0 50 58h7L76 2z"/>
+                <path fill="#ffce86" d="M69 10h2l1 7h-4zm-2 15h6l1 10h-8zm-2 23h10l2 12H63z"/>
+                <path fill="#32ddf2" d="M17 28h4v18h-4zm102 0h4v18h-4z"/>
+              </svg>
+            </div>
+          </div>
+          <div id="playfield" tabindex="-1" role="group" aria-label="Taggy flight course. Tap Space to jump. Hold Space, mouse, or the Fly button to fly. Use Up/W and Down/S to walk across the road. Steer with Left/Right, A/D, or by dragging the left touch. Shoot with F, right mouse, or the Fire button. Pause with P or Escape.">
             <div id="boss-hud" hidden>
               <strong id="boss-name"></strong><span id="test-mode" hidden>TEST MODE</span>
               <progress id="boss-hp" aria-label="Boss health" max="1" value="1"></progress>
               <span id="boss-note"></span>
             </div>
-            <button id="touch-flight" type="button" aria-label="Hold to fly" hidden>Hold to fly</button>
-            <button id="arena-jump" type="button" hidden>Jump</button>
             <p id="speech" hidden></p>
+            <div id="demo-banner" role="status" hidden>
+              <strong>DEMO</strong>
+              <span class="demo-key">PRESS ANY KEY FOR MENU</span>
+              <span class="demo-touch">TAP FOR MENU</span>
+            </div>
+            <section id="demo-board" class="compact-board" aria-labelledby="demo-board-title" hidden>
+              <h2 id="demo-board-title">Leaderboard</h2>
+              <table><thead><tr><th scope="col">Rank</th><th scope="col">Initials</th><th scope="col">Score</th></tr></thead><tbody id="demo-board-rows"></tbody></table>
+            </section>
+          </div>
+          <div class="touch-actions" role="group" aria-label="Touch actions">
+            <button id="touch-shoot" type="button" aria-label="Hold to fire" hidden><span class="btn-label">Fire</span></button>
+            <button id="touch-flight" type="button" aria-label="Hold to fly" hidden><span class="btn-label">Hold to fly</span></button>
           </div>
         </div>
+        </div>
+        <section id="arcade-deck" aria-label="Arcade controls">
+          <img id="deck-image" alt="" aria-hidden="true">
+          <div class="painted-deck" aria-hidden="true"></div>
+          <div class="deck-controls">
+            <button id="deck-stick" class="deck-push" type="button" aria-label="Steer and change road depth. Drag or use arrow keys when focused." disabled><span class="btn-label">STEER</span></button>
+            <button id="deck-fly" class="deck-push" type="button" aria-label="Jump or fly. Tap to jump, hold to fly." disabled><span class="btn-label">JUMP / FLY</span></button>
+            <button id="deck-fire" class="deck-push" type="button" aria-label="Fire. Hold to keep firing." disabled><span class="btn-label">FIRE</span></button>
+            <button id="deck-start" class="deck-push" type="button" aria-label="Start game" disabled><span class="btn-label">START</span></button>
+          </div>
+        </section>
+      </section>
+      <aside class="side-panel" aria-label="Game and shopping controls">
+        <p class="fullscreen-stores">DeWitt <span aria-hidden="true">/</span> Sterling Heights</p>
+        <div class="cabinet-details">
         <p id="effects" hidden></p>
         <p id="status" role="status">Loading game…</p>
         <section id="result" hidden aria-labelledby="result-title">
@@ -69,56 +178,66 @@
           <h3>Your next step</h3>
           <p>Choose a Price Right RV store to browse inventory.</p>
           <div class="stores" role="group" aria-label="Choose your store">
-            <button data-store="dewitt" aria-pressed="false">DeWitt</button>
-            <button data-store="sterlingHeights" aria-pressed="false">Sterling Heights</button>
+            <button data-store="dewitt" aria-pressed="false"><span class="btn-label">DeWitt</span></button>
+            <button data-store="sterlingHeights" aria-pressed="false"><span class="btn-label">Sterling Heights</span></button>
           </div>
           <p id="store-status" role="status">Select a store to enable the inventory link.</p>
           <div class="result-actions">
             <a id="inventory" class="cta primary" hidden>Browse inventory</a>
-            <button id="view-scores-result" type="button">View scores</button>
+            <button id="view-scores-result" type="button"><span class="btn-label">View scores</span></button>
           </div>
+          <button id="fullscreen-nudge" type="button"><span class="btn-label">Play fullscreen</span></button>
         </section>
       <!-- Cabinet mount for RVLeaderboard.attach(gameId). The client owns visibility,
            focus and async updates of the existing leaderboard section and child IDs. -->
       <div id="leaderboard-mount">
-            <section id="leaderboard" aria-labelledby="board-title" hidden>
-              <header><h2 id="board-title" tabindex="-1">Leaderboard</h2><button id="close-board" type="button">Close</button></header>
+            <dialog id="leaderboard" aria-labelledby="board-title">
+              <header><h2 id="board-title" tabindex="-1">Leaderboard</h2><button id="close-board" type="button"><span class="btn-label">Close</span></button></header>
+              <div id="board-content">
               <p id="board-status" role="status"></p>
               <form id="initials-form" hidden novalidate>
                 <label for="initials">Three arcade initials</label>
                 <input id="initials" name="initials" maxlength="3" autocomplete="off" autocapitalize="characters" spellcheck="false">
-                <button id="submit-score" class="primary" type="submit">Submit</button>
-                <button id="skip-score" type="button">Skip</button>
+                <button id="submit-score" class="primary" type="submit"><span class="btn-label">Submit</span></button>
+                <button id="skip-score" type="button"><span class="btn-label">Skip</span></button>
               </form>
               <table><thead><tr><th scope="col">Rank</th><th scope="col">Initials</th><th scope="col">Score</th></tr></thead><tbody id="board-rows"></tbody></table>
-            </section>
+              </div>
+            </dialog>
       </div>
         <div id="mascot-intro" class="mascot-intro" hidden>
           <div class="mascot-stage" aria-hidden="true">
             <div class="rig"><div class="camper"></div><div class="cab"></div><i></i><i></i><img id="intro-taggy" alt=""></div>
             <div class="coin-spray"></div>
           </div>
-          <button id="skip-intro" type="button">Skip intro</button>
+          <button id="skip-intro" type="button"><span class="btn-label">Skip intro</span></button>
         </div>
         <div id="intro">
           <p id="motion-note">Reduced motion: calmer scenery.</p>
-          <button id="view-scores-start" type="button">View scores</button>
-          <ul id="legend" aria-label="Track items"></ul>
+          <button id="view-scores-start" type="button"><span class="btn-label">View scores</span></button>
         </div>
+        <details class="track-guide">
+          <summary>Track guide</summary>
+          <ul id="legend" aria-label="Track items"></ul>
         <section id="flight-hint" class="controls-strip" aria-label="How to play">
           <span><b>Fly</b> Hold Space / mouse</span>
           <span><b>Move</b> Left / Right or A / D</span>
-          <span><b>Shoot</b> Hold F, click, tap, or toggle Auto-fire</span>
+          <span><b>Shoot</b> Hold F or right mouse. Tap or hold Fire on touch.</span>
           <span><b>Road depth</b> Up / W, Down / S (Q / E fallback)</span>
           <span><b>Jump</b> Space</span>
           <span><b>Pause</b> P</span>
-          <span class="touch-hint"><b>Touch</b> Use Hold to fly during the road run. Drag left-side to steer or walk across the road. Tap to shoot.</span>
+          <span class="touch-hint"><b>Touch</b> Tap Fly to jump or hold to fly. Drag left to steer. Tap or hold Fire.</span>
         </section>
-      </section>
-      <aside class="side-panel" aria-label="Game and shopping controls">
+        </details>
+        </div>
         <section class="panel-bank" aria-labelledby="game-select-title">
           <h2 id="game-select-title">Game select</h2>
           <ol id="game-slots"></ol>
+        </section>
+        <section id="side-board" class="panel-bank compact-board" aria-labelledby="side-board-title" hidden>
+          <h2 id="side-board-title">Leaderboard</h2>
+          <p id="side-board-status">Loading scores…</p>
+          <table id="side-board-table" hidden><thead><tr><th scope="col">Rank</th><th scope="col">Initials</th><th scope="col">Score</th></tr></thead><tbody id="side-board-rows"></tbody></table>
         </section>
         <section class="panel-bank shop-bank" aria-labelledby="shop-title">
           <h2 id="shop-title">Shop</h2>
@@ -131,15 +250,16 @@
       <h2 id="controls-title">Flight controls</h2>
       <dl>
         <dt>Fly</dt><dd>Tap Space to jump. Hold Space in the air or the mouse button to fly.</dd>
-        <dt>Boss arena</dt><dd>Tap Space or the Jump button. Road depth, steering and shooting still work. Flight returns after the boss.</dd>
+        <dt>Arcade deck</dt><dd>Drag Steer, or focus it and use arrows, to steer and change depth. Tap Jump / Fly to jump or hold it to fly. Press or hold Fire to shoot. Use Start or Play Again to begin a run. Space and Enter activate the focused action.</dd>
+        <dt>Boss arena</dt><dd>Hold Space or Fly to rise during combat. Watch the boss wind-up and incoming attack status.</dd>
         <dt>Descend</dt><dd>Hold Down or S for a small boost while airborne. Lift takes priority.</dd>
         <dt>Road depth</dt><dd>Up/W and Down/S move along road depth while grounded. Q/E step between lanes.</dd>
         <dt>Steer</dt><dd>Left / Right or A / D.</dd>
-        <dt>Shoot</dt><dd>Hold F, click, tap, or toggle Auto-fire. All shots share the same cooldown.</dd>
+        <dt>Shoot</dt><dd>Hold F or right mouse. Tap or hold Fire on touch.. All shots share the same cooldown.</dd>
         <dt>Pause</dt><dd>P or Escape.</dd>
-        <dt>Touch</dt><dd>Hold the Fly button during road runs. Drag on the left to steer or walk across the road. Tap either side to shoot.</dd>
+        <dt>Touch</dt><dd>Tap Fly to jump or hold it to rise. Drag on the left to steer. Tap or hold Fire.</dd>
       </dl>
-      <form method="dialog"><button autofocus>Close controls</button></form>
+      <form method="dialog"><button type="submit" autofocus><span class="btn-label">Close controls</span></button></form>
     </dialog>
   </main>
 </body>

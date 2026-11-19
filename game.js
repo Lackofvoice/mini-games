@@ -1,5 +1,25 @@
 'use strict';
 
+const canvasFontsPending = new Map();
+
+function arcadeText(scene, x, y, label, style, role = 'body') {
+    const fontFamily = getComputedStyle(document.documentElement).getPropertyValue('--font-' + role).trim()
+        || 'system-ui, sans-serif';
+    const text = scene.add.text(x, y, label, { ...style, fontFamily });
+    const face = fontFamily.split(',')[0];
+    if (document.fonts && !document.fonts.check('16px ' + face)) {
+        if (!canvasFontsPending.has(face)) {
+            const waiting = new Set();
+            canvasFontsPending.set(face, waiting);
+            document.fonts.load('16px ' + face).then(faces => {
+                if (faces.length) for (const item of waiting) if (item.scene) item.setFontFamily(fontFamily);
+            }).catch(() => {}).finally(() => canvasFontsPending.set(face, null));
+        }
+        canvasFontsPending.get(face)?.add(text);
+    }
+    return text;
+}
+
 const WIDTH = 600;
 const HEIGHT = 800;
 const GROUND = 644;
@@ -19,9 +39,9 @@ const COYOTE_TIME_MS = 120;
 const JUMP_BUFFER_MS = 120;
 const TAP_MS = 140;
 const TAP_SLOP = 6;
-const AUTO_FIRE_DEFAULT = true;
+const AUTO_FIRE_DEFAULT = false;
 const AUTO_FIRE_KEY = 'rv-dash-auto-fire';
-const FLIGHT_HOLD_MS = 145;
+const FLIGHT_HOLD_MS = 48;
 const ROAD_SHEET = 'road-obstacle-sheet';
 const LOT_LIFE_ENABLED = false;
 const OPTIONAL_SHEETS = {
@@ -166,7 +186,7 @@ const TAGGY_BODY = {
     'taggy-shoot': [[72, 64, 56], [72, 64, 54], [72, 64, 52]],
     'taggy-hit': [[72, 64, 36], [72, 64, 39]]
 };
-const TAGGY_BODY_LENGTH = 46;
+const TAGGY_BODY_LENGTH = 66;
 
 const SKY_PALETTES = [
     ['dawn', '#403564', '#a06585', '#f1ad85', '#ffe1b3'],
@@ -442,8 +462,13 @@ function registerOptionalFrames(scene) {
 
 function makeScenery(scene) {
     const foliage = [0, 2, 3, 4, 1, 5, 2];
-    const rvLot = [0, 1, 2, 3].map((frame) =>
-        ['rv-lot-set', 70 + frame * 150, 587 + (frame % 2) * 13, 121 + (frame % 2) * 16, 64, 0xe9ddd4, 'lot', 1, frame]);
+    // Both trimmed rows end at the tires. The far row rests on the lot's upper stripe.
+    const rvLot = [
+        ['rv-lot-set', 90, 521, 110, 64, 0xe9ddd4, 'treeLine', 0.5, 0],
+        ['rv-lot-set', 220, 579, 137, 64, 0xe9ddd4, 'lot', 1, 1],
+        ['rv-lot-set', 370, 579, 121, 64, 0xe9ddd4, 'lot', 1, 2],
+        ['rv-lot-set', 390, 521, 116, 64, 0xe9ddd4, 'treeLine', 0.5, 3, true]
+    ];
     const hasFrame = (key, frame) => scene.textures.exists(key) && scene.textures.get(key).has(frame);
     const replaceRvs = rvLot.some(([key, , , , , , , , frame]) => hasFrame(key, frame));
     const scenery = SCENERY.flatMap((entry, index) => {
@@ -458,13 +483,13 @@ function makeScenery(scene) {
         scenery.push(['lot-life', 66, 607, 33, 48, 0xffffff, 'lot', 1.1, 0],
             ['lot-life', 309, 602, 33, 48, 0xffffff, 'lot', 1.1, 4]);
     }
-    return scenery.flatMap(([key, x, y, maxWidth, maxHeight, tint, speed, depth, index]) => {
+    return scenery.flatMap(([key, x, y, maxWidth, maxHeight, tint, speed, depth, index, flip = false]) => {
         if (!hasFrame(key, index ?? '__BASE')) return [];
         const frame = scene.textures.getFrame(key, index);
         const scale = Math.min(maxWidth / frame.width, maxHeight / frame.height);
         return [-1, 0, 1].map((copy) => ({
-            image: scene.add.image(x + copy * WIDTH, y, key, index).setOrigin(0.5, 1).setScale(scale).setTint(tint).setDepth(depth),
-            x: x + copy * WIDTH, scale,
+            image: scene.add.image(x + copy * WIDTH, y, key, index).setOrigin(0.5, 1).setScale(scale).setTint(tint).setDepth(depth).setFlipX(flip),
+            x, copy, scale,
             speed
         }));
     });
@@ -509,6 +534,8 @@ function boot() {
 
         create() {
             this.state = STATES.AWAITING_START;
+            this.runMode = 'real';
+            this.demo = BOSS_DEBUG_LEVEL ? null : new window.RVDashDemo.AttractMode();
             this.score = 0;
             this.elapsed = 0;
             this.store = null;
@@ -525,10 +552,17 @@ function boot() {
             this.shots = [];
             this.finishedRuns = 0;
             this.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+            const stopTauntMotion = () => { if (this.reducedMotion.matches) this.arena?.paint(); };
+            this.reducedMotion.addEventListener('change', stopTauntMotion);
+            this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+                this.reducedMotion.removeEventListener('change', stopTauntMotion);
+            });
             makeTextures(this);
             registerOptionalFrames(this);
-            this.bossSheets = new Set(BOSS_DEFINITIONS.map(({id}) => 'boss-' + id)
-                .filter(key => validateBossSheet(this, key)));
+            this.bossSheets = new Set(BOSS_DEFINITIONS.flatMap(({id}) => ['boss-' + id, 'boss-' + id + '-walk'])
+                .filter(key => validateBossSheet(this, key, key.endsWith('-walk') ? 6 : 4)));
+            this.bossProps = validateBossProps(this);
+            this.seenBosses = new Set();
             this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.clearArena());
             byId('test-mode').hidden = !BOSS_DEBUG_LEVEL;
             byId('view-scores-start').hidden = Boolean(BOSS_DEBUG_LEVEL);
@@ -577,16 +611,19 @@ function boot() {
             this.player = this.add.sprite(START_X, FLOOR_Y, 'taggy-idle-right', 0).setDepth(5);
             this.sizeTaggy();
             this.muted = true;
-            this.leaderboard = BOSS_DEBUG_LEVEL ? null : window.RVLeaderboard.attach('rv-dash');
+            this.leaderboard = BOSS_DEBUG_LEVEL ? null : window.RVLeaderboard.attach('rv-dash', open => {
+                this.scoreOverlayOpen = open;
+                this.demo.activity();
+            });
             this.leaderboard?.ready();
             this.best = readBest();
             byId('page-best').textContent = this.best.score;
             this.segments = [];
             this.effects = [];
-            this.banner = this.add.text(WIDTH / 2, 100, '', {
-                fontFamily: 'system-ui, sans-serif', fontStyle: 'bold', fontSize: '35px',
+            this.banner = arcadeText(this, WIDTH / 2, 100, '', {
+                fontSize: '35px',
                 color: UI_PALETTE.light, backgroundColor: UI_PALETTE.panel, padding: { x: 24, y: 9 }
-            }).setOrigin(0.5).setDepth(8).setVisible(false);
+            }, 'display').setOrigin(0.5).setDepth(8).setVisible(false);
             this.makeLegend();
             this.bindControls();
             this.renderState();
@@ -601,13 +638,31 @@ function boot() {
             const on = (target, event, handler) => {
                 target.addEventListener(event, handler, { signal: listeners.signal });
             };
-            this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => listeners.abort());
+            if (this.demo) {
+                const capture = event => this.demo.capture(event, this.runMode === 'demo', () => this.exitDemo());
+                for (const type of ['keydown', 'keyup', 'pointerdown', 'pointermove', 'click', 'auxclick', 'contextmenu', 'wheel']) {
+                    window.addEventListener(type, capture, { capture: true, signal: listeners.signal });
+                }
+                const help = byId('controls-dialog');
+                const helpObserver = new MutationObserver(() => {
+                    this.helpOpen = help.open;
+                    this.demo.activity();
+                });
+                helpObserver.observe(help, { attributes: true, attributeFilter: ['open'] });
+                this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => helpObserver.disconnect());
+            }
+            on(window, 'rvdash:panelinput', (event) => this.panelInput(event.detail));
+            this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+                this.clearPanelInput();
+                window.dispatchEvent(new CustomEvent('rvdash:panelstate', { detail: false }));
+                listeners.abort();
+            });
             byId('sound').disabled = false;
             on(byId('sound'), 'click', async () => {
                 this.muted = !this.muted;
                 const button = byId('sound');
                 button.setAttribute('aria-pressed', String(!this.muted));
-                button.textContent = this.muted ? 'Sound off' : 'Sound on';
+                button.querySelector('.btn-label').textContent = this.muted ? 'Sound off' : 'Sound on';
                 if (this.muted) return;
                 try {
                     const Audio = window.AudioContext || window.webkitAudioContext;
@@ -616,7 +671,7 @@ function boot() {
                 } catch {
                     this.muted = true;
                     button.setAttribute('aria-pressed', 'false');
-                    button.textContent = 'Sound unavailable';
+                    button.querySelector('.btn-label').textContent = 'Sound unavailable';
                 }
             });
             this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -624,7 +679,7 @@ function boot() {
             });
             const autoFireButton = byId('auto-fire');
             const updateAutoFire = () => {
-                autoFireButton.textContent = 'Auto-fire: ' + (this.autoFire ? 'ON' : 'OFF');
+                autoFireButton.querySelector('.btn-label').textContent = 'Auto-fire: ' + (this.autoFire ? 'ON' : 'OFF');
                 autoFireButton.setAttribute('aria-pressed', String(this.autoFire));
             };
             updateAutoFire();
@@ -634,12 +689,6 @@ function boot() {
                 try { localStorage.setItem(AUTO_FIRE_KEY, String(this.autoFire)); } catch {}
                 if (this.state === STATES.PLAYING) byId('playfield').focus({ preventScroll: true });
             });
-            on(byId('arena-jump'), 'click', () => {
-                if (!this.arena?.active || this.state !== STATES.PLAYING || this.crashUntil) return;
-                this.jumpBufferedUntil = this.elapsed + JUMP_BUFFER_MS;
-                this.tryJump();
-                byId('playfield').focus({preventScroll: true});
-            });
             on(byId('start'), 'click', () => this.start());
             on(byId('replay'), 'click', () => this.start());
             on(byId('pause'), 'click', () => {
@@ -647,6 +696,11 @@ function boot() {
                 if (this.state === STATES.PLAYING) byId('playfield').focus({ preventScroll: true });
             });
             on(document, 'visibilitychange', () => {
+                this.demo?.visibilityChanged();
+                if (this.runMode === 'demo') {
+                    this.clearInput();
+                    return;
+                }
                 if (document.hidden && this.state === STATES.PLAYING) this.setRoundState(STATES.PAUSED);
             });
             on(window, 'blur', () => this.clearInput());
@@ -657,11 +711,12 @@ function boot() {
                 if (Object.hasOwn(LANE_KEYS, code)) {
                     if (this.state !== STATES.PLAYING || this.crashUntil || event.target !== byId('playfield')) return;
                     event.preventDefault();
-                    if (!event.repeat && this.player.y >= this.roadDepth) {
+                    if (!event.repeat && (this.arena || this.player.y >= this.roadDepth)) {
+                        const altitude = this.roadDepth - this.player.y;
                         this.roadLane = Phaser.Math.Clamp(this.roadLane + LANE_KEYS[code], 0, ROAD_LANES.length - 1);
                         this.roadDepth = ROAD_LANES[this.roadLane];
                         this.depthSpeed = 0;
-                        this.player.y = this.roadDepth;
+                        this.player.y = this.roadDepth - altitude;
                     }
                     return;
                 }
@@ -688,7 +743,7 @@ function boot() {
                 if (this.state !== STATES.PLAYING) this.start();
                 if (move) this.moveKeys.add(code);
                 else if (road) {
-                    if (this.player.y >= this.roadDepth) this.roadKeys.add(code);
+                    if (this.arena || this.player.y >= this.roadDepth) this.roadKeys.add(code);
                     else if (code === 'ArrowDown' || code === 'KeyS') this.downHeld = true;
                 } else if (code === 'Space') {
                     this.jumpHeld = true;
@@ -717,10 +772,37 @@ function boot() {
                 this.shootHeld = false;
             });
             const flight = byId('touch-flight');
-            on(document, 'pointercancel', () => this.clearInput());
-            on(document, 'touchcancel', () => this.clearInput());
+            const shoot = byId('touch-shoot');
+            on(field, 'contextmenu', event => event.preventDefault());
+            on(field, 'mousedown', event => {
+                if (event.button !== 2 || this.state !== STATES.PLAYING) return;
+                event.preventDefault();
+                this.mouseShoot = true;
+                this.fire();
+            });
+            on(window, 'mouseup', event => {
+                if (event.button === 2) this.mouseShoot = false;
+            });
+            on(shoot, 'pointerdown', event => {
+                if (event.button !== 0 || this.state !== STATES.PLAYING || this.shotPointerId != null) return;
+                event.preventDefault();
+                shoot.setPointerCapture(event.pointerId);
+                this.shotPointerId = event.pointerId;
+                this.fire();
+            });
+            for (const name of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+                on(shoot, name, event => {
+                    if (event.pointerId === this.shotPointerId) this.shotPointerId = null;
+                });
+            }
+            on(shoot, 'click', event => { if (event.detail === 0) this.fire(); });
+            const cancelLegacy = event => {
+                if (!event.target.closest?.('#arcade-deck')) this.clearInput(false);
+            };
+            on(document, 'pointercancel', cancelLegacy);
+            on(document, 'touchcancel', cancelLegacy);
             on(flight, 'keydown', event => {
-                if (event.code !== 'Space' || this.arena || this.state !== STATES.PLAYING) return;
+                if (event.code !== 'Space' || this.state !== STATES.PLAYING) return;
                 event.preventDefault();
                 if (event.repeat) return;
                 this.jumpHeld = true;
@@ -730,11 +812,14 @@ function boot() {
             });
             on(flight, 'blur', () => { this.jumpHeld = false; });
             on(flight, 'pointerdown', (event) => {
-                if (event.button !== 0 || this.state !== STATES.PLAYING || this.arena || this.crashUntil
+                if (event.button !== 0 || this.state !== STATES.PLAYING || this.crashUntil
                     || this.flightPointerId != null) return;
                 event.preventDefault();
                 flight.setPointerCapture(event.pointerId);
                 this.flightPointerId = event.pointerId;
+                this.flightPressed = this.elapsed;
+                this.jumpBufferedUntil = this.elapsed + JUMP_BUFFER_MS;
+                this.tryJump();
             });
             for (const name of ['pointerup', 'pointercancel', 'lostpointercapture']) {
                 on(flight, name, (event) => {
@@ -742,7 +827,7 @@ function boot() {
                 });
             }
             on(field, 'pointerdown', (event) => {
-                if (event.button !== 0 || this.crashUntil || this.state === STATES.PAUSED || this.loadFailures.size) return;
+                if (event.target.closest('button') || event.button !== 0 || this.crashUntil || this.state === STATES.PAUSED || this.loadFailures.size) return;
                 if (this.state === STATES.AWAITING_START) this.start();
                 if (this.state !== STATES.PLAYING) return;
                 field.focus({ preventScroll: true });
@@ -751,6 +836,7 @@ function boot() {
                     if (this.rightTap) return;
                     field.setPointerCapture(event.pointerId);
                     this.rightTap = { id: event.pointerId, x: event.clientX, y: event.clientY, at: performance.now() };
+                    this.fire();
                 } else if (this.pointerId === null) {
                     field.setPointerCapture(event.pointerId);
                     this.pointerId = event.pointerId;
@@ -769,7 +855,7 @@ function boot() {
                     tap.dragged = true;
                 }
                 if (event.pointerId !== this.pointerId || this.touchTargetX == null) return;
-                if (this.player.y >= this.roadDepth) {
+                if (this.arena || this.player.y >= this.roadDepth) {
                     const dy = event.clientY - this.touchStartY;
                     this.touchDepthDirection = Math.abs(dy) > 5 ? Math.sign(dy) : 0;
                 }
@@ -782,7 +868,7 @@ function boot() {
                     const tap = this[slot];
                     if (tap?.id === pointer.pointerId) {
                         this[slot] = null;
-                        if (event === 'pointerup' && !tap.dragged && performance.now() - tap.at <= TAP_MS
+                        if (slot === 'flightTap' && event === 'pointerup' && !tap.dragged && performance.now() - tap.at <= TAP_MS
                             && Math.hypot(pointer.clientX - tap.x, pointer.clientY - tap.y) <= TAP_SLOP) this.fire();
                     }
                     if (this.pointerId === pointer.pointerId) {
@@ -830,7 +916,41 @@ function boot() {
             }
         }
 
-        clearInput() {
+        panelInput(input) {
+            const { source, held, x, y } = input || {};
+            if (this.state !== STATES.PLAYING || this.crashUntil) return;
+            if (source === 'stick') {
+                this.panelAxes = { x: Math.sign(x || 0), y: Math.sign(y || 0) };
+            } else if (source === 'fire') {
+                if (held && !this.panelFire) this.fire();
+                this.panelFire = Boolean(held);
+            } else if (source === 'fly' || source === 'lever') {
+                this.panelFlight ??= new Set();
+                if (!held) {
+                    this.panelFlight.delete(source);
+                } else if (!this.panelFlight.has(source)) {
+                    if (!this.panelFlight.size) {
+                        this.panelFlightAt = this.elapsed;
+                        if (!this.jumpHeld && this.flightPointerId == null
+                            && !(this.pointerId != null && this.touchTargetX == null)) {
+                            this.jumpBufferedUntil = this.elapsed + JUMP_BUFFER_MS;
+                            this.tryJump();
+                        }
+                    }
+                    this.panelFlight.add(source);
+                }
+            }
+        }
+
+        clearPanelInput() {
+            this.panelAxes = null;
+            this.panelFire = false;
+            this.panelFlight?.clear();
+            if (typeof window.dispatchEvent === 'function') window.dispatchEvent(new Event('rvdash:panelreset'));
+        }
+
+        clearInput(clearPanel = true) {
+            if (clearPanel) this.clearPanelInput();
             this.downHeld = false;
             this.roadKeys.clear();
             this.jumpHeld = false;
@@ -849,13 +969,42 @@ function boot() {
                 flight.releasePointerCapture(this.flightPointerId);
             }
             this.flightPointerId = null;
+            const shoot = byId('touch-shoot');
+            if (this.shotPointerId != null && shoot.hasPointerCapture(this.shotPointerId)) shoot.releasePointerCapture(this.shotPointerId);
+            this.shotPointerId = null;
+            this.mouseShoot = false;
             this.flightTap = null;
             this.rightTap = null;
         }
 
-        start() {
+        start(mode = 'real') {
             if (this.state !== STATES.AWAITING_START && this.state !== STATES.GAME_OVER) return;
-            this.leaderboard?.start();
+            this.runMode = mode;
+            if (mode === 'real') this.demo?.reset();
+            this.demo?.clearBoard(this.leaderboard);
+            const presentation = this.leaderboard?.start(mode);
+            this.demo?.claimBoard(presentation);
+            const scenario = mode === 'demo' ? this.demo.nextScene() : null;
+            this.resetRun(scenario);
+            this.setRoundState(STATES.PLAYING);
+            this.drawTaggy();
+            if (BOSS_DEBUG_LEVEL || scenario?.arena) this.enterArena();
+            this.speak("Price Right. Let's roll.");
+            this.updateStats();
+            if (mode === 'demo') return;
+            if (!BOSS_DEBUG_LEVEL && !this.flightHintSeen) {
+                try { this.flightHintSeen = localStorage.getItem('rv-dash-flight-hint') === '1'; } catch {}
+                if (!this.flightHintSeen) {
+                    this.flightHintSeen = true;
+                    this.speak('Hold to fly');
+                    try { localStorage.setItem('rv-dash-flight-hint', '1'); } catch {}
+                }
+            }
+            byId('playfield').focus({ preventScroll: true });
+            track('game_start');
+        }
+
+        resetRun(scenario = null) {
             this.clearArena();
             for (const segment of this.segments) {
                 segment.view.destroy();
@@ -881,12 +1030,13 @@ function boot() {
             this.landedAt = -1000;
             this.jumpGroundedAt = 0;
             this.score = 0;
-            this.level = BOSS_DEBUG_LEVEL || 1;
+            this.level = scenario?.level ?? (BOSS_DEBUG_LEVEL || 1);
             this.bonus = 0;
             this.coinStreak = 0;
             this.newBest = false;
             this.elapsed = 0;
-            this.scroll = (this.level - 1) * LEVEL_DISTANCE;
+            // Road starts follow the previous boundary. Arenas start at their own.
+            this.scroll = (this.level - (BOSS_DEBUG_LEVEL || scenario?.arena ? 0 : 1)) * LEVEL_DISTANCE;
             this.layerOffsets = {};
             this.layerLevel = 0;
             this.nextPattern = this.scroll + SPAWN_TIMING.first;
@@ -906,21 +1056,29 @@ function boot() {
             this.idleLine = 0;
             this.player.anims.stop();
             this.player.clearTint().setAlpha(1).setAngle(0).setPosition(START_X, FLOOR_Y);
-            this.drawTaggy();
             this.banner.setVisible(false);
             this.resetSky();
+            this.setTheme(this.level);
             this.trailPoints.length = 0;
             this.nextTrail = 0;
             this.drawScenery();
             this.drawSpeedFX();
             this.drawRoadPosition();
             this.selectStore(null);
-            this.setRoundState(STATES.PLAYING);
-            this.enterArena();
-            this.speak("Price Right. Let's roll.");
+        }
+
+        exitDemo() {
+            if (this.runMode !== 'demo') return;
+            this.demo.clearBoard(this.leaderboard);
+            this.demo.reset();
+            this.runMode = 'real';
+            this.resetRun();
+            this.leaderboard?.ready();
+            this.setRoundState(STATES.AWAITING_START);
+            byId('speech').hidden = true;
             this.updateStats();
-            byId('playfield').focus({ preventScroll: true });
-            track('game_start');
+            this.drawTaggy();
+            byId('start').focus({ preventScroll: true });
         }
 
         setRoundState(state) {
@@ -939,19 +1097,25 @@ function boot() {
         renderState() {
             const { AWAITING_START, PLAYING, PAUSED, GAME_OVER } = STATES;
             const intro = this.state === AWAITING_START;
+            const demo = this.runMode === 'demo';
             byId('start').disabled = false;
             byId('start').hidden = !intro;
             byId('intro').hidden = !intro;
             byId('shot-status').hidden = intro || this.state === GAME_OVER;
-            byId('pause').hidden = this.state !== PLAYING && this.state !== PAUSED;
-            byId('pause').textContent = this.state === PAUSED ? 'Resume' : 'Pause';
+            byId('pause').hidden = demo || this.state !== PLAYING && this.state !== PAUSED;
+            byId('pause').querySelector('.btn-label').textContent = this.state === PAUSED ? 'Resume' : 'Pause';
             document.body.classList.toggle('in-flight', this.state === PLAYING);
             document.body.classList.toggle('is-paused', this.state === PAUSED);
             byId('status').textContent = this.state === PAUSED ? 'Run paused. Select Resume to continue.' : '';
             byId('result').hidden = this.state !== GAME_OVER;
             byId('replay').hidden = this.state !== GAME_OVER;
-            byId('arena-jump').hidden = this.state !== PLAYING || this.arena?.mode !== 'fight';
-            byId('touch-flight').hidden = this.state !== PLAYING || Boolean(this.arena) || Boolean(this.crashUntil);
+            byId('view-scores-result').hidden = demo || Boolean(BOSS_DEBUG_LEVEL);
+            byId('demo-banner').hidden = !demo;
+            byId('touch-flight').hidden = demo || this.state !== PLAYING || Boolean(this.crashUntil);
+            byId('touch-shoot').hidden = byId('touch-flight').hidden;
+            if (typeof window.dispatchEvent === 'function') {
+                window.dispatchEvent(new CustomEvent('rvdash:panelstate', { detail: this.state === PLAYING && !this.crashUntil }));
+            }
         }
 
         updateStats() {
@@ -975,8 +1139,17 @@ function boot() {
             indicator.hidden = !effects || this.state === STATES.GAME_OVER;
         }
 
-        update(_, delta) {
+        update(now, delta) {
+            if (this.state === STATES.GAME_OVER && this.demo) {
+                const blocked = document.hidden || this.scoreOverlayOpen || this.helpOpen;
+                if (this.demo.wait(now, blocked)) this.start('demo');
+                return;
+            }
             if (this.state !== STATES.PLAYING) return;
+            if (this.runMode === 'demo') {
+                if (!this.demo.canAdvance(document.hidden)) return;
+                if (!this.crashUntil) window.RVDashDemo.driveDemo(this);
+            }
             // Small substeps keep collision and pattern crossings reliable on slow frames.
             let remaining = Math.min(delta, 64);
             while (remaining > 0 && this.state === STATES.PLAYING) {
@@ -985,6 +1158,7 @@ function boot() {
                 remaining -= step;
             }
             if (this.state !== STATES.PLAYING) return;
+            if (this.runMode === 'demo') this.demo.updateBoard(this.elapsed, this.leaderboard);
             this.drawScenery();
             this.drawSpeedFX();
             this.arena?.paint();
@@ -1001,6 +1175,11 @@ function boot() {
             const available = image?.width === 540 && image.height === 387;
             this.themeBackdrop.setVisible(available);
             if (available) this.themeBackdrop.setTexture(key).setScale(WIDTH / image.width);
+            if (typeof window.dispatchEvent === 'function') {
+                window.dispatchEvent(new CustomEvent('rvdash:themechange', {
+                    detail: { gameId: 'rv-dash', themeKey: this.theme, level }
+                }));
+            }
         }
 
         enterArena() {
@@ -1017,7 +1196,6 @@ function boot() {
             }
             this.banner.setVisible(false);
             this.arena = new BossArena(this, this.level);
-            byId('touch-flight').hidden = true;
             this.player.x = Math.min(this.player.x, BOSS_TUNING.playerRight);
             this.trailPoints.length = 0;
         }
@@ -1025,6 +1203,10 @@ function boot() {
         clearArena() {
             this.arena?.destroy();
             this.arena = null;
+        }
+
+        fireHeld() {
+            return this.autoFire || this.shootHeld || this.panelFire || this.mouseShoot || this.shotPointerId != null || this.rightTap != null;
         }
 
         advance(step) {
@@ -1044,17 +1226,21 @@ function boot() {
                 if (arena.mode === 'intro') {
                     const coast = this.reducedMotion.matches ? 0 : Math.max(0, 1 - arena.age / BOSS_TUNING.stop);
                     this.advanceScenery(scrollSpeed(this.scroll) * dt * coast, dt);
+                } else if (arena.active && !this.reducedMotion.matches) {
+                    this.advanceScenery(scrollSpeed(this.scroll) * dt * 0.2, dt);
                 }
                 if (arena.step(step)) {
                     this.clearArena();
                     this.clearInput();
-                    byId('touch-flight').hidden = false;
+                    this.renderState();
+                    this.level++;
+                    this.setTheme(this.level);
                     this.resumeAt = this.elapsed;
                     this.nextPattern = this.scroll + SPAWN_TIMING.first;
                     this.banner.setText('LEVEL ' + this.level).setAlpha(1).setVisible(true);
                     this.bannerUntil = this.elapsed + 1100;
                 } else if (!this.crashUntil) {
-                    if (this.autoFire || this.shootHeld) this.fire();
+                    if (this.fireHeld()) this.fire();
                     this.updateShots(dt);
                 }
                 return;
@@ -1067,11 +1253,10 @@ function boot() {
             this.advanceScenery(distance, dt);
             this.score = Math.floor(this.scroll / 20) + this.bonus;
             if (this.scroll >= boundary) {
-                this.level++;
                 this.enterArena();
                 return;
             }
-            if (!this.newBest && this.best.score > 0 && this.score > this.best.score) {
+            if (this.runMode !== 'demo' && !this.newBest && this.best.score > 0 && this.score > this.best.score) {
                 this.newBest = true;
                 this.speak('New best. Nice flying.');
             }
@@ -1085,7 +1270,7 @@ function boot() {
                 }
             }
             this.updateHealthPickup(distance);
-            if (this.autoFire || this.shootHeld) this.fire();
+            if (this.fireHeld()) this.fire();
             for (const segment of this.segments) {
                 segment.age += step;
                 segment.view.x -= distance;
@@ -1122,17 +1307,18 @@ function boot() {
         }
 
         moveRoadDepth(dt) {
-            if (GROUND_MOVEMENT_MODE !== 'free-road' || this.player.y < this.roadDepth || this.verticalSpeed < 0) return;
+            if (GROUND_MOVEMENT_MODE !== 'free-road' || !this.arena && (this.player.y < this.roadDepth || this.verticalSpeed < 0)) return;
+            const altitude = Math.max(0, this.roadDepth - this.player.y);
             const far = this.roadKeys.has('ArrowUp') || this.roadKeys.has('KeyW');
             const near = this.roadKeys.has('ArrowDown') || this.roadKeys.has('KeyS');
-            const direction = this.touchDepthDirection || Number(near) - Number(far);
+            const direction = this.touchDepthDirection || (near || far ? Number(near) - Number(far) : this.panelAxes?.y || 0);
             const response = direction ? STEER_RESPONSE : STEER_BRAKE;
             this.depthSpeed += (direction * ROAD_DEPTH_SPEED - this.depthSpeed) * (1 - Math.exp(-response * dt));
             if (!direction && Math.abs(this.depthSpeed) < STOP_SPEED) this.depthSpeed = 0;
             const depth = this.roadDepth + this.depthSpeed * dt;
             this.roadDepth = Phaser.Math.Clamp(depth, ROAD_LANES[0], ROAD_LANES.at(-1));
             if (depth !== this.roadDepth) this.depthSpeed = 0;
-            this.player.y = this.roadDepth;
+            this.player.y = this.roadDepth - altitude;
             this.roadLane = Math.round((this.roadDepth - ROAD_LANES[0]) / (ROAD_LANES[1] - ROAD_LANES[0]));
         }
 
@@ -1142,7 +1328,8 @@ function boot() {
 
         fly(dt) {
             const airborne = this.player.y < this.roadDepth || this.verticalSpeed < 0;
-            const thrusting = !this.arena && (this.flightPointerId != null
+            const thrusting = (this.flightPointerId != null && this.elapsed - this.flightPressed >= FLIGHT_HOLD_MS
+                || this.panelFlight?.size && this.elapsed - this.panelFlightAt >= FLIGHT_HOLD_MS
                 || this.pointerId !== null && this.touchTargetX == null
                 || this.jumpHeld && airborne && this.elapsed - this.jumpStarted >= FLIGHT_HOLD_MS
                 || this.elapsed < this.coffeeLiftUntil);
@@ -1156,7 +1343,7 @@ function boot() {
             const previousY = this.player.y;
             const y = previousY + this.verticalSpeed * dt;
             const floor = this.roadDepth;
-            this.player.y = Phaser.Math.Clamp(y, CEILING_Y, floor);
+            this.player.y = Phaser.Math.Clamp(y, this.arena ? BOSS_TUNING.ceiling : CEILING_Y, floor);
             if (y !== this.player.y) {
                 if (y > floor && previousY < floor) this.landedAt = this.elapsed;
                 this.verticalSpeed = 0;
@@ -1230,18 +1417,18 @@ function boot() {
                     }
                 }
             }
-            for (const { image, x, speed, shift = 0 } of this.scenery) {
-                image.x = wrap(x + shift - offset(speed), WIDTH) + Math.floor(x / WIDTH) * WIDTH;
+            for (const { image, x, copy, speed, shift = 0 } of this.scenery) {
+                image.x = wrap(x + shift - offset(speed), WIDTH) + copy * WIDTH;
             }
             if (this.debugLayers) {
                 const report = Object.keys(PARALLAX).map(name =>
-                    name + ' ' + (reduced ? 0 : this.layerSpeeds[name] || 0).toFixed(1) + ' px/s').join('\n');
+                    name + ' ' + (this.layerSpeeds[name] || 0).toFixed(1) + ' px/s').join('\n');
                 if (this.layerReadout.text !== report) this.layerReadout.setText(report);
             }
         }
 
         advanceScenery(distance, dt) {
-            if (this.reducedMotion.matches) return;
+            // Active road motion is gameplay feedback. Arena callers suppress decorative motion.
             for (const [name, factor] of Object.entries(PARALLAX)) {
                 const speed = distance / dt * factor;
                 this.layerSpeeds[name] = speed;
@@ -1521,7 +1708,7 @@ function boot() {
                 else if (this.coinStreak === 1) this.speak('One for the road.');
             }
             this.playPickupSound(coffee ? 'coffee' : 'score');
-            track('pickup_collect', { type: coffee ? 'coffee' : 'score' });
+            if (this.runMode !== 'demo') track('pickup_collect', { type: coffee ? 'coffee' : 'score' });
         }
 
         moveHorizontally(dt) {
@@ -1529,7 +1716,7 @@ function boot() {
             const right = this.moveKeys.has('ArrowRight') || this.moveKeys.has('KeyD');
             const touchError = this.touchTargetX == null ? null : this.touchTargetX - this.player.x;
             const maxSpeed = this.elapsed < this.puddleUntil ? MOVE_SPEED * .8 : MOVE_SPEED;
-            const target = touchError == null ? (Number(right) - Number(left)) * maxSpeed
+            const target = touchError == null ? (left || right ? Number(right) - Number(left) : this.panelAxes?.x || 0) * maxSpeed
                 : Phaser.Math.Clamp(touchError * TOUCH_STEER_GAIN, -maxSpeed, maxSpeed);
             const response = target === 0 ? STEER_BRAKE : STEER_RESPONSE;
             this.horizontalSpeed += (target - this.horizontalSpeed) * (1 - Math.exp(-response * dt));
@@ -1585,7 +1772,9 @@ function boot() {
             this.crashAt = this.elapsed;
             this.crashUntil = this.elapsed + CRASH_MS;
             byId('touch-flight').hidden = true;
+            byId('touch-shoot').hidden = true;
             this.clearInput();
+            window.dispatchEvent(new CustomEvent('rvdash:panelstate', { detail: false }));
             if (!this.reducedMotion.matches) this.cameras.main.shake(110, 0.0018);
             this.speak("Ouch... that's a tag!");
         }
@@ -1636,8 +1825,8 @@ function boot() {
         }
 
         showFeedback(label, x, y, color = UI_PALETTE.light) {
-            const popup = this.add.text(Phaser.Math.Clamp(x, 100, WIDTH - 100), Math.max(45, y - 22), label, {
-                fontFamily: 'monospace', fontSize: '25px', fontStyle: 'bold',
+            const popup = arcadeText(this, Phaser.Math.Clamp(x, 100, WIDTH - 100), Math.max(45, y - 22), label, {
+                fontSize: '30px',
                 color, stroke: UI_PALETTE.outline, strokeThickness: 6
             }).setOrigin(0.5);
             this.addEffect(popup, 850, 32);
@@ -1690,9 +1879,11 @@ function boot() {
         }
 
         finish() {
-            this.finishedRuns += 1;
-            const record = !BOSS_DEBUG_LEVEL && this.score > this.best.score;
-            if (!BOSS_DEBUG_LEVEL) {
+            if (this.state !== STATES.PLAYING) return;
+            const demo = this.runMode === 'demo';
+            if (!demo) this.finishedRuns += 1;
+            const record = !demo && !BOSS_DEBUG_LEVEL && this.score > this.best.score;
+            if (!demo && !BOSS_DEBUG_LEVEL) {
                 this.best = { score: Math.max(this.best.score, this.score), level: Math.max(this.best.level, this.level) };
                 try { localStorage.setItem(BEST_KEY, JSON.stringify(this.best)); } catch {
                     // Keep the session best even when storage is blocked.
@@ -1705,8 +1896,11 @@ function boot() {
             this.setRoundState(STATES.GAME_OVER);
             byId('effects').hidden = true;
             byId('speech').hidden = true;
+            this.demo?.clearBoard(this.leaderboard);
+            this.demo?.gameOver();
+            if (demo) return;
             byId('replay').focus({ preventScroll: true });
-            this.leaderboard?.finish(this.score);
+            this.leaderboard?.finish(this.score, this.level);
             track('game_complete', {
                 result: 'crash', score: this.score, level: this.level,
                 duration_seconds: Math.round(this.crashAt / 1000)

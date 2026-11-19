@@ -22,7 +22,7 @@ main { width: min(100% - 24px, 990px); }
   display: flex; align-items: center; gap: 7px;
   min-height: 34px; padding: 5px 8px;
   color: #f5e5e9; background: #0c0e12; border: 1px solid #51515a; border-radius: 5px;
-  font: 800 .73rem ui-monospace, Consolas, monospace; text-transform: uppercase;
+  font: 400 .73rem var(--font-body); text-transform: uppercase;
 }
 .readout i { width: 8px; height: 8px; border-radius: 50%; background: #6a6872; }
 .readout[data-state="ready"] i { background: #a8b6ff; box-shadow: 0 0 6px #a8b6ff; }
@@ -31,7 +31,7 @@ main { width: min(100% - 24px, 990px); }
 .readout[data-state="game over"] i { background: #ff647d; box-shadow: 0 0 7px #ff647d; }
 .utility { display: flex; flex-wrap: wrap; gap: 5px; }
 .utility button {
-  font: 800 .69rem ui-monospace, Consolas, monospace;
+  font: 400 .69rem var(--font-body);
   padding-inline: 8px; border-radius: 4px;
   transition: transform 60ms ease-out;
 }
@@ -45,50 +45,17 @@ main { width: min(100% - 24px, 990px); }
 #playfield { max-width: 600px; box-shadow: 0 0 0 3px #38323f, 0 0 16px #ed315c3a; border-radius: 2px; }
 .controls-strip { margin: 10px 0; background: #171921; border-color: #55535d; }
 .bar { margin-top: 8px; }
-#start:not(:disabled), #replay {
-  animation: none;
-  padding: 10px 15px;
-  border: 2px solid #fff0ef;
-  border-radius: 5px;
-  box-shadow: 0 4px 0 #5c1023;
-  text-transform: uppercase;
-  letter-spacing: .02em;
-  transition: transform 60ms ease-out;
-}
-#start::after, #replay::after { content: none; }
-.primary-label, .slot-label { position: relative; display: block; font-weight: 900; }
-.primary-label::before, .primary-label::after, .slot-label::after {
-  content: attr(data-text); position: absolute; inset: 0; opacity: 0; pointer-events: none; white-space: nowrap;
-}
-#start:not(:disabled):is(:hover,:focus-visible) .primary-label::after,
-#replay:is(:hover,:focus-visible) .primary-label::after { color: #71efff; animation: channel 420ms steps(4) both; }
-#start:not(:disabled):is(:hover,:focus-visible) .primary-label::before,
-#replay:is(:hover,:focus-visible) .primary-label::before { color: #ff8492; animation: channel 420ms steps(3) reverse both; }
-@keyframes channel {
-  0%,100% { opacity: 0; }
-  20% { opacity: 1; transform: translateX(3px); clip-path: inset(15% 0 60%); }
-  60% { opacity: 1; transform: translateX(-3px); clip-path: inset(68% 0 5%); }
-}
 .side-panel { display: grid; min-width: 0; gap: 14px; }
 .panel-bank h2 { margin: 0 0 8px; font-size: .83rem; letter-spacing: .095em; text-transform: uppercase; }
 #game-slots { margin: 0; padding: 0; list-style-position: inside; }
 #game-slots li { margin-top: 6px; padding: 3px 0 0; }
-#game-slots li::marker { color: #cfbbc7; font: 700 .76rem ui-monospace, Consolas, monospace; }
+#game-slots li::marker { color: #cfbbc7; font: 400 .76rem var(--font-body); }
 .slot {
   display: flex; gap: 8px; justify-content: space-between; align-items: center;
   padding: 8px 10px; border: 1px solid #605965; border-radius: 5px;
   text-decoration: none; color: #fff5f4; text-transform: uppercase; font-size: .85rem;
 }
 .slot small { font-size: .62rem; font-weight: 750; }
-.slot.active { min-height: 44px; border-color: #ff7892; background: #6e142e; }
-.slot.active:is(:hover,:focus-visible) .slot-label::after {
-  color: #ffafbd; animation: pixel-sort 400ms steps(4) both;
-}
-@keyframes pixel-sort {
-  0%,100% { opacity: 0; }
-  20% { opacity: 1; transform: translateX(6px); clip-path: polygon(0 0,100% 0,100% 28%,55% 28%,55% 57%,0 57%); }
-  65% { opacity: 1; transform: translateX(-4px); clip-path: polygon(35% 38%,100% 38%,100% 91%,0 91%,0 65%,35% 65%); }
-}
 .slot.locked {
   color: #d0c8d1;
   background: repeating-linear-gradient(0deg, #292731 0 3px, #26242e 3px 5px);
@@ -102,16 +69,9 @@ main { width: min(100% - 24px, 990px); }
   min-height: 44px; margin-top: 7px; padding: 7px 9px;
   border: 1px solid #557267; border-radius: 6px; background: #0c1715; color: #b0f7cf;
   text-shadow: 0 0 4px #71d69c85; text-decoration: none;
-  font: 750 .85rem ui-monospace, Consolas, monospace;
+  font: 400 .85rem var(--font-body);
   overflow: hidden; transition: transform 140ms ease-out;
 }
-.shop-key:active { transform: scale(.88); }
-.shop-key::after {
-  content: ""; position: absolute; inset: -12px 0 auto; height: 7px; opacity: 0;
-  background: #9bffbd30; pointer-events: none;
-}
-.shop-key:is(:hover,:focus-visible)::after { animation: scan 550ms linear; }
-@keyframes scan { 20% { opacity: .65; } 100% { opacity: 0; transform: translateY(64px); } }
 #controls-dialog {
   width: min(100% - 32px, 430px); padding: 16px; margin: auto;
   color: var(--cream); background: #21232b; border: 1px solid #81717e; border-radius: 10px;
@@ -120,8 +80,6 @@ main { width: min(100% - 24px, 990px); }
 #controls-dialog h2 { margin: 0; }
 #controls-dialog dt { font-weight: 850; }
 #controls-dialog dd { margin: 0 0 8px; }
-main:fullscreen { width: 100%; max-width: none; padding: 12px; margin: 0; overflow: auto; background: #15151c; }
-main:fullscreen .cabinet-layout, main:fullscreen .masthead { max-width: 990px; margin-inline: auto; }
 .mascot-intro {
   position: relative; height: 104px; margin: 8px 0; padding: 5px;
   overflow: hidden; border: 1px solid #56515d; border-radius: 7px;
@@ -164,80 +122,248 @@ main:fullscreen .cabinet-layout, main:fullscreen .masthead { max-width: 990px; m
   .cabinet-layout { grid-template-columns: minmax(0, 1fr) 232px; }
   #console { padding: 14px; }
 }
+/* The scene is decorative. The cabinet and its dialogs keep the normal input stack. */
+#page-scene { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+#page-scene > div {
+  position: absolute; inset: 0; opacity: 0; background-position: center;
+  background-size: cover; transition: opacity .4s ease;
+}
+#page-scene > .scene-active { opacity: 1; }
+main { position: relative; z-index: 1; }
+.cabinet-screen { --marquee-height: 60px; display: grid; gap: 6px; }
+.cabinet-marquee {
+  position: relative; display: grid; place-items: center; height: var(--marquee-height);
+  overflow: hidden; pointer-events: none; border: 1px solid var(--line);
+  border-radius: 5px; background: #10142b; color: var(--cream);
+  font: 400 24px/1.25 var(--font-display); letter-spacing: .04em; text-transform: uppercase;
+}
+.has-marquee #marquee-label { visibility: hidden; }
+#cabinet-image {
+  position: absolute; display: block; top: 0;
+  width: min(100%, var(--marquee-source-width), calc((var(--marquee-height) - 4px) * var(--marquee-ratio)));
+  height: auto; image-rendering: auto;
+  clip-path: inset(0 0 var(--marquee-source-crop) 0);
+}
+#cabinet-image[hidden] { display: none; }
+.cabinet-screen #game-area { border-inline: 3px solid #385478; }
+
+#arcade-deck {
+  position: relative; width: 100%; margin: 4px auto 0;
+  border-top: 1px solid #345870; user-select: none;
+}
+.deck-controls {
+  position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 5px; align-items: center; justify-items: center; padding: 4px 3px 8px;
+}
+#deck-image { display: none; pointer-events: none; }
+.has-print > #deck-image {
+  display: block; position: absolute; inset: 0; margin: auto;
+  width: min(100%, 440px, var(--deck-source-width));
+  height: min(100%, var(--deck-source-height)); object-fit: contain; image-rendering: auto;
+}
+#arcade-deck button { min-width: 44px; min-height: 44px; touch-action: none; }
+#arcade-deck button:disabled { opacity: .69; cursor: default; }
+#arcade-deck .deck-push { display: grid; place-content: center; padding: 5px 9px; text-align: center; }
 @media (prefers-reduced-motion: reduce) {
-  .utility button, .shop-key, #start:not(:disabled), #replay { transition: none; }
-  #start:not(:disabled):is(:hover,:focus-visible) .primary-label::before,
-  #start:not(:disabled):is(:hover,:focus-visible) .primary-label::after,
-  #replay:is(:hover,:focus-visible) .primary-label::before,
-  #replay:is(:hover,:focus-visible) .primary-label::after,
-  .slot.active:is(:hover,:focus-visible) .slot-label::after,
-  .shop-key:is(:hover,:focus-visible)::after, .rig, .coin-spray i { animation: none; }
+  #page-scene > div { transition: none; }
+  .rig, .coin-spray i { animation: none; }
 }
 
-/* The stationary native button is the base and hit area. Only its face moves. */
-.cabinet-press {
-  --raised-depth: 8px;
-  --press-travel: 7px;
-  --press-duration: 55ms;
-  --release-duration: 210ms;
-}
-#console button.cabinet-press {
-  padding: 0;
-  overflow: visible;
-  border: 0;
-  background: #140f19;
-  border-radius: 6px;
-  box-shadow: none;
-  transform: none;
-  animation: none;
-  transition: none;
-}
-#console .utility .cabinet-press, #console #pause { --raised-depth: 7px; --press-travel: 6px; }
-#console .cabinet-press:active { transform: none; }
-#console .cabinet-press::after, #console .cabinet-press::before { content: none; }
-.key-face {
-  display: grid;
-  place-items: center;
-  align-self: stretch;
-  min-width: 44px;
-  min-height: calc(44px - var(--raised-depth));
-  margin-bottom: var(--raised-depth);
-  padding: 6px 10px;
-  border: 1px solid #907385;
-  border-radius: 6px;
-  background: linear-gradient(#504052, #352b3a);
-  transform: translateY(0);
-  transition: transform var(--release-duration) cubic-bezier(.15,.9,.27,1.37);
+#demo-banner {
+  position: absolute;
+  z-index: 6;
+  inset: 8px 8px auto;
+  width: max-content;
+  max-width: calc(100% - 16px);
+  margin-inline: auto;
+  padding: 5px 9px;
+  border: 1px solid var(--neon-cyan);
+  background: #171a31;
+  color: white;
+  text-align: center;
+  font-size: 12px;
   pointer-events: none;
 }
-.primary .key-face, [aria-pressed="true"] .key-face {
-  background: linear-gradient(#e32849, #a80e31);
-  border-color: #ffb3bf;
-}
-#start .key-face, #replay .key-face { border-width: 2px; padding-inline: 16px; }
-.utility .key-face { padding-inline: 8px; }
-.key-face[data-decode] { position: relative; }
-.key-face[data-decode]::after {
-  content: attr(data-decode);
-  position: absolute;
-  inset: 1px;
+#demo-banner strong { display: block; color: var(--neon-cyan); font: 700 17px var(--font-display); }
+#leaderboard[open] {
+  position: fixed;
+  inset: auto;
+  left: var(--board-left);
+  top: var(--board-top);
+  transform: translate(-50%, -50%);
   display: grid;
-  place-items: center;
-  border-radius: 5px;
-  background: #302936;
-  color: #ffc1ca;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
+  width: var(--board-width);
+  max-height: var(--board-height);
+  margin: 0;
+  overflow: hidden;
+  color: var(--arcade-text);
 }
-.cabinet-press:not(:disabled):is(:active,[data-press]) .key-face {
-  transform: translateY(var(--press-travel));
-  transition: transform var(--press-duration) ease-out;
+#leaderboard::backdrop { background: #080918ad; }
+#leaderboard > header { padding: 2px 4px 4px; }
+#board-content { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 0 4px 4px; }
+.compact-board { pointer-events: none; }
+.compact-board table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
 }
-@media (prefers-reduced-motion: reduce) {
-  .cabinet-press .key-face, .cabinet-press:not(:disabled):is(:active,[data-press]) .key-face {
-    transform: none;
-    transition: none;
+.compact-board th, .compact-board td {
+  padding: 2px 5px;
+  border-bottom: 1px solid var(--arcade-border);
+}
+.compact-board th { color: #c0f7ff; }
+.compact-board :is(th, td):last-child { text-align: right; }
+.compact-board .board-new-entry {
+  color: #d8fff6;
+  background: #16433f;
+}
+#side-board-status { margin: 5px 0 0; font-size: 14px; }
+#side-board { block-size: 210px; overflow: hidden; }
+
+/* Reserve the status and action tracks in every cabinet state. */
+#console .readout { min-inline-size: 102px; white-space: nowrap; }
+#console > .bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 110px;
+  grid-template-rows: 44px 18px;
+  gap: 0 6px;
+}
+#console .bar > :is(#start, #replay, #pause) { grid-area: 1 / 2; justify-self: end; }
+#console .bar > .stats { grid-area: 1 / 1; flex-wrap: nowrap; gap: 4px 8px; }
+#console .bar #health { white-space: nowrap; }
+#console .bar #shot-status { grid-area: 2 / 1 / 3 / -1; justify-self: end; }
+#demo-board {
+  position: absolute;
+  z-index: 5;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(270px, calc(100% - 28px));
+  padding: 9px 10px 12px;
+  border: 1px solid var(--neon-cyan);
+  border-top: 2px solid var(--neon-pink);
+  border-radius: 7px;
+  background: #171a31ef;
+  color: var(--arcade-text);
+}
+#demo-board h2 {
+  margin: 0 0 4px;
+  color: var(--neon-cyan);
+  font: 700 17px var(--font-display);
+}
+@media (max-width: 999px), (max-height: 699px), (pointer: coarse) {
+  #side-board { display: none; }
+}
+.demo-touch { display: none; }
+@media (pointer: coarse) {
+  .demo-key { display: none; }
+  .demo-touch { display: inline; }
+}
+
+#cabinet-screen[data-game="rv-dash"] .cabinet-marquee {
+  background: #0a0a14 url("assets/cabinet/rv-dash-cabinet-marquee-1824x112.png") center / contain no-repeat;
+}
+#cabinet-screen[data-game="rv-dash"] .cabinet-marquee::before,
+#cabinet-screen[data-game="rv-dash"] .cabinet-marquee > :not(.cabinet-cycle-image) { visibility: hidden; }
+
+#cabinet-screen[data-game="rv-dash"] .side-illustration {
+  container-type: size;
+  background: #0a0a14;
+}
+#cabinet-screen[data-game="rv-dash"] .side-illustration.left {
+  --insert-art: url("assets/cabinet/rv-dash-cabinet-left-690x1980.png");
+}
+#cabinet-screen[data-game="rv-dash"] .side-illustration.right {
+  --insert-art: url("assets/cabinet/rv-dash-cabinet-right-690x1980.png");
+}
+#cabinet-screen[data-game="rv-dash"] .side-illustration::before { content: none; }
+/* Limit the portrait by both slot dimensions so it keeps its full composition. */
+#cabinet-screen[data-game="rv-dash"] .side-illustration::after,
+#cabinet-screen[data-game="rv-dash"] .side-illustration > .cabinet-cycle-image {
+  content: "";
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: min(100%, calc(100cqh * 23 / 66));
+  aspect-ratio: 23 / 66;
+  transform: translate(-50%, -50%);
+  clip-path: none;
+}
+#cabinet-screen[data-game="rv-dash"] .side-illustration::after {
+  background: #0a0a14 var(--insert-art) center / contain no-repeat;
+}
+#cabinet-screen[data-game="rv-dash"] .side-illustration > :not(.cabinet-cycle-image) { display: none; }
+
+.cabinet-cycle-image {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  background-color: #0a0a14;
+}
+#cabinet-screen[data-game="rv-dash"] .side-illustration > .cabinet-cycle-image {
+  height: auto;
+}
+#cabinet-screen:not([data-game="rv-dash"]) .cabinet-cycle-image { display: none; }
+:is(.cabinet-marquee, .side-illustration):has(> .cabinet-cycle-image),
+.painted-deck:has(> .cabinet-cycle-image) {
+  overflow: hidden;
+}
+
+#arcade-deck {
+  width: min(100%, 620px);
+  max-width: calc(100% - 2px);
+  aspect-ratio: 181 / 25;
+  box-sizing: content-box;
+  margin-top: 0;
+}
+.painted-deck {
+  display: none;
+  position: absolute;
+  inset: 0;
+  isolation: isolate;
+  pointer-events: none;
+}
+#cabinet-screen[data-game="rv-dash"] + #arcade-deck > #deck-image { display: none; }
+#cabinet-screen[data-game="rv-dash"] + #arcade-deck > .painted-deck {
+  display: block;
+  background: #0a0a14 url("assets/cabinet/rv-dash-cabinet-deck-1267x175.png") center / contain no-repeat;
+}
+#cabinet-screen + #arcade-deck > .deck-controls {
+  position: absolute;
+  inset: 0;
+  max-width: none;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  align-content: center;
+  padding: 0 12px;
+}
+#arcade-deck > .deck-controls > :is(#deck-stick, #deck-fly, #deck-fire, #deck-start) {
+  grid-column: auto;
+  width: 100%;
+  height: 54px;
+  padding: 4px;
+  white-space: nowrap;
+  --primary: var(--neon-orange);
+  --secondary: var(--arcade-black);
+}
+#arcade-deck > .deck-controls > :is(#deck-stick, #deck-fly, #deck-fire, #deck-start):disabled {
+  --secondary: var(--arcade-muted);
+}
+
+@media (max-width: 729px) {
+  #arcade-deck {
+    width: min(100%, 340px);
+    height: 132px;
+    aspect-ratio: auto;
+    margin-top: 4px;
   }
-  .cabinet-press:not(:disabled):is(:active,[data-press]) .key-face {
-    background: #553142;
-    border-color: #fff1cf;
-  }
+  #cabinet-screen + #arcade-deck > .deck-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #arcade-deck > .deck-controls > :is(#deck-stick, #deck-fly, #deck-fire, #deck-start) { height: 48px; }
 }
